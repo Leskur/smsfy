@@ -11,4 +11,4 @@ Gotify / ntfy 统一字段约定，手机端按此转发后，Smsfy 才能按对
 ## 会话键
 
 - `peer:<normalized-phone>` — 例如 title `+1 (555) 010-1234` → `peer:+15550101234`
-- 空 title → `peer:unknown`
+- 空 title → Gotify：`peer:unknown`；ntfy：回退用主题名（如 `peer:my-topic`）

@@ -105,15 +105,17 @@ export async function deleteNtfyMessage(
   }
 }
 
-/** Map ntfy message using the shared pipe: title=phone, message=body, topic=source. */
+/** Map ntfy message using the shared pipe: title=phone, message=body, topic=source.
+ *  Empty title falls back to topic so messages still group into a named thread. */
 export function ntfyEventToLocal(event: NtfyEvent): Message {
   const topic = event.topic?.trim()
+  const title = event.title?.trim() || topic
   return {
     id: `ntfy:${event.id}`,
-    threadId: peerThreadId(event.title),
+    threadId: peerThreadId(title),
     backend: 'ntfy',
     direction: 'in',
-    peer: displayPeer(event.title),
+    peer: displayPeer(title),
     body: event.message ?? '',
     date: (event.time || 0) * 1000 || Date.now(),
     remoteId: event.id,
