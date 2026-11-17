@@ -535,21 +535,19 @@ function MessageRow({
       onPointerCancel={clearPress}
       onPointerLeave={clearPress}
     >
-      {selecting ? (
-        <span
-          className={`select-check${checked ? ' on' : ''}`}
-          aria-hidden
-        >
-          {checked ? <Check size={14} strokeWidth={2.5} /> : null}
-        </span>
-      ) : (
-        <span className="avatar-wrap">
-          <ContactAvatar />
-          {thread.unread > 0 ? (
-            <span className="unread-dot" aria-label={copy.unreadAria} />
-          ) : null}
-        </span>
-      )}
+      <span className="avatar-wrap">
+        <ContactAvatar />
+        {selecting ? (
+          <span
+            className={`select-check${checked ? ' on' : ''}`}
+            aria-hidden
+          >
+            {checked ? <Check size={14} strokeWidth={2.5} /> : null}
+          </span>
+        ) : thread.unread > 0 ? (
+          <span className="unread-dot" aria-label={copy.unreadAria} />
+        ) : null}
+      </span>
       <div className="message-meta">
         <div className="message-top">
           <span className="message-title">{thread.peer}</span>

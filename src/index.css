@@ -566,11 +566,6 @@ button {
   background: var(--row-active);
 }
 
-.message-list.is-selecting .message-item {
-  grid-template-columns: 28px 1fr;
-  gap: 0.85rem;
-}
-
 .select-check {
   width: 1.35rem;
   height: 1.35rem;
@@ -580,7 +575,14 @@ button {
   place-items: center;
   flex-shrink: 0;
   color: var(--on-accent);
-  background: transparent;
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.avatar-wrap .select-check {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
 }
 
 .select-check.on {

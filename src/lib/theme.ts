@@ -13,30 +13,25 @@ export function resolveEffectiveTheme(
     : 'light'
 }
 
-/** Fallback if `--surface` is not readable yet (matches list / settings). */
+/** List / settings surface — keep PWA chrome in sync with these. */
 const THEME_COLORS: Record<EffectiveTheme, string> = {
   light: '#ffffff',
   dark: '#1a1a1a',
 }
 
-function readListBackground(effective: EffectiveTheme): string {
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue('--surface')
-    .trim()
-  return raw || THEME_COLORS[effective]
-}
-
 /** Keep OS chrome (status / title bar) aligned with the list background. */
 function syncChromeTheme(effective: EffectiveTheme) {
-  const color = readListBackground(effective)
+  const color = THEME_COLORS[effective]
 
-  let meta = document.querySelector('meta[name="theme-color"]')
-  if (!meta) {
-    meta = document.createElement('meta')
-    meta.setAttribute('name', 'theme-color')
-    document.head.appendChild(meta)
-  }
+  // Drop media-bound tags so OS prefers-color-scheme cannot override in-app theme.
+  document
+    .querySelectorAll('meta[name="theme-color"]')
+    .forEach((el) => el.remove())
+
+  const meta = document.createElement('meta')
+  meta.setAttribute('name', 'theme-color')
   meta.setAttribute('content', color)
+  document.head.appendChild(meta)
 
   let apple = document.querySelector(
     'meta[name="apple-mobile-web-app-status-bar-style"]',
