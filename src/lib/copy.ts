@@ -16,8 +16,8 @@ export const copy = {
   scrollTopAria: '回到顶部',
 
   emptyListTitle: '暂无信息',
-  emptyListHint: '请先在设置中连接短信网关。信息会按对方手机号分组显示。',
-  emptyListConfiguredHint: '已连接网关，暂时还没有短信。',
+  emptyListHint: '请先在设置中连接信息源。信息会按对方手机号分组显示。',
+  emptyListConfiguredHint: '已连接信息源，暂时还没有短信。',
   emptyListCta: '打开设置',
 
   emptyThreadTitle: '选择一条信息',

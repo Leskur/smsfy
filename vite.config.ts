@@ -14,7 +14,7 @@ export default defineConfig({
       manifest: {
         name: 'Smsfy',
         short_name: 'Smsfy',
-        description: '类短信收件箱，连接自有 Gotify / ntfy 网关',
+        description: '类短信收件箱，连接自有 Gotify / ntfy 信息源',
         lang: 'zh-CN',
         start_url: '/',
         scope: '/',
