@@ -25,6 +25,7 @@ export function useSync(enabled = true) {
   const gotify = useSettingsStore((s) => s.gotify)
   const ntfy = useSettingsStore((s) => s.ntfy)
   const upsertMessages = useInboxStore((s) => s.upsertMessages)
+  const applyNtfyDelete = useInboxStore((s) => s.applyNtfyDelete)
   const setGotifyApps = useInboxStore((s) => s.setGotifyApps)
   const setStatus = useInboxStore((s) => s.setStatus)
   const setLoading = useInboxStore((s) => s.setLoading)
@@ -238,7 +239,25 @@ export function useSync(enabled = true) {
           if (maxTime > ntfySinceRef.current) {
             ntfySinceRef.current = maxTime
           }
-          upsertMessages(events.map(ntfyEventToLocal))
+          const deletedSeq = new Set<string>()
+          const incomingEvents = []
+          for (const event of events) {
+            if (event.event === 'message_delete') {
+              const sequenceId = event.sequence_id?.trim()
+              if (sequenceId) deletedSeq.add(sequenceId)
+              continue
+            }
+            incomingEvents.push(event)
+          }
+          for (const sequenceId of deletedSeq) applyNtfyDelete(sequenceId)
+          const incoming = incomingEvents
+            .filter(
+              (event) =>
+                !deletedSeq.has(event.id) &&
+                !deletedSeq.has(event.sequence_id ?? ''),
+            )
+            .map(ntfyEventToLocal)
+          if (incoming.length) upsertMessages(incoming)
         }
         setError(undefined)
       } catch (error) {
@@ -285,6 +304,11 @@ export function useSync(enabled = true) {
           if (event.time && event.time > ntfySinceRef.current) {
             ntfySinceRef.current = event.time
           }
+          if (event.event === 'message_delete') {
+            const sequenceId = event.sequence_id?.trim()
+            if (sequenceId) applyNtfyDelete(sequenceId)
+            return
+          }
           upsertMessages([ntfyEventToLocal(event)], { live: true })
         },
         (status) => {
@@ -324,6 +348,7 @@ export function useSync(enabled = true) {
     ntfy.topics,
     ntfy.accessToken,
     upsertMessages,
+    applyNtfyDelete,
     setStatus,
     setError,
     clearBackend,

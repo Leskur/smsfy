@@ -5,12 +5,20 @@ import type { Message } from '../types'
 export interface NtfyEvent {
   id: string
   time: number
-  event: 'open' | 'keepalive' | 'message' | 'poll_request'
+  event:
+    | 'open'
+    | 'keepalive'
+    | 'message'
+    | 'poll_request'
+    | 'message_delete'
+    | 'message_clear'
   topic: string
   message?: string
   title?: string
   priority?: number
   tags?: string[]
+  /** Present on updates / deletes; equals message id when none was set at publish. */
+  sequence_id?: string
 }
 
 export { parseTopics }
@@ -67,12 +75,33 @@ export async function fetchNtfyPoll(
     if (!trimmed) continue
     try {
       const event = JSON.parse(trimmed) as NtfyEvent
-      if (event.event === 'message') events.push(event)
+      if (event.event === 'message' || event.event === 'message_delete') {
+        events.push(event)
+      }
     } catch {
       // skip malformed NDJSON lines
     }
   }
   return events
+}
+
+/** Best-effort delete; uses message id as sequence id when none was set. */
+export async function deleteNtfyMessage(
+  serverUrl: string,
+  topic: string,
+  sequenceId: string,
+  accessToken?: string,
+): Promise<void> {
+  const path = `/${encodeURIComponent(topic)}/${encodeURIComponent(sequenceId)}`
+  const res = await proxiedFetch(joinUrl(serverUrl, path), {
+    method: 'DELETE',
+    headers: {
+      ...ntfyAuthHeaders(accessToken),
+    },
+  })
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`ntfy delete failed (${res.status})`)
+  }
 }
 
 /** Map ntfy message using the shared pipe: title=phone, message=body, topic=source. */
@@ -107,16 +136,20 @@ export function openNtfySse(
   source.onopen = () => onStatus('open')
   source.onerror = () => onStatus('error')
 
-  source.onmessage = (ev) => {
+  const handleFrame = (ev: MessageEvent<string>) => {
     try {
       const data = JSON.parse(ev.data) as NtfyEvent
-      if (data.event === 'message') {
+      if (data.event === 'message' || data.event === 'message_delete') {
         onMessage(data)
       }
     } catch {
       // ignore
     }
   }
+
+  // Default frames + named `message_delete` events from ntfy SSE.
+  source.onmessage = handleFrame
+  source.addEventListener('message_delete', handleFrame as EventListener)
 
   return source
 }

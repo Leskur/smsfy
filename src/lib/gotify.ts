@@ -83,6 +83,23 @@ export async function fetchGotifyMessages(
   return all
 }
 
+export async function deleteGotifyMessage(
+  baseUrl: string,
+  clientToken: string,
+  messageId: number | string,
+): Promise<void> {
+  const res = await proxiedFetch(
+    joinUrl(baseUrl, `/message/${encodeURIComponent(String(messageId))}`),
+    {
+      method: 'DELETE',
+      headers: { 'X-Gotify-Key': clientToken },
+    },
+  )
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Gotify delete failed (${res.status})`)
+  }
+}
+
 /** Map Gotify message using the shared pipe: title=phone, message=body. */
 export function gotifyMessageToLocal(
   msg: GotifyMessage,

@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react'
+import { Check, ChevronLeft, Trash2, X } from 'lucide-react'
 import {
   useEffect,
   useEffectEvent,
@@ -8,7 +8,9 @@ import {
   useState,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { copyText } from '../lib/clipboard'
 import { copy } from '../lib/copy'
 import {
   formatColorOsStamp,
@@ -17,6 +19,7 @@ import {
   splitRichText,
   takeHangPunct,
 } from '../lib/format'
+import { placeActionMenu, pointRect } from '../lib/placeMenu'
 import { extractOtp } from '../lib/peer'
 import {
   threadMessages,
@@ -25,11 +28,20 @@ import {
 import { toast } from '../store/toast'
 import type { Message } from '../types'
 
+const LONG_PRESS_MS = 480
+const LONG_PRESS_MOVE_PX = 10
+
 type ActionKind = 'otp' | 'url'
 
 interface ActionTarget {
   kind: ActionKind
   value: string
+  rect: DOMRect
+}
+
+interface BubbleMenuState {
+  messageId: string
+  body: string
   rect: DOMRect
 }
 
@@ -41,6 +53,13 @@ export function MessageThread({ onBack }: Props) {
   const selectedId = useInboxStore((s) => s.selectedId)
   const threads = useInboxStore((s) => s.threads)
   const messagesMap = useInboxStore((s) => s.messages)
+  const deleteConversation = useInboxStore((s) => s.deleteConversation)
+  const deleteMessages = useInboxStore((s) => s.deleteMessages)
+  const [deleting, setDeleting] = useState(false)
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  const [menu, setMenu] = useState<BubbleMenuState | null>(null)
+  const suppressClickRef = useRef(false)
 
   const thread = selectedId ? threads[selectedId] : null
   const messages = selectedId
@@ -52,6 +71,68 @@ export function MessageThread({ onBack }: Props) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView()
   }, [messages.length, selectedId])
+
+  useEffect(() => {
+    setSelecting(false)
+    setSelected(new Set())
+    setMenu(null)
+  }, [selectedId])
+
+  useEffect(() => {
+    if (!selecting) return
+    setSelected((prev) => {
+      const next = new Set<string>()
+      for (const id of prev) {
+        if (messagesMap[id]) next.add(id)
+      }
+      return next
+    })
+  }, [messagesMap, selecting])
+
+  function exitSelect() {
+    setSelecting(false)
+    setSelected(new Set())
+  }
+
+  function toggleSelected(messageId: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(messageId)) next.delete(messageId)
+      else next.add(messageId)
+      return next
+    })
+  }
+
+  async function onDeleteThread() {
+    if (!selectedId || deleting || selecting) return
+    if (!window.confirm(copy.deleteThreadConfirm)) return
+    setDeleting(true)
+    try {
+      const result = await deleteConversation(selectedId)
+      if (!result) return
+      const failed = result.gotifyFailed + result.ntfyFailed
+      toast(failed > 0 ? copy.deleteThreadPartial : copy.deleteThreadDone)
+      onBack()
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  async function deleteMessageIds(ids: string[]) {
+    if (ids.length === 0 || deleting) return
+    if (!window.confirm(copy.deleteMessagesConfirm)) return
+    setDeleting(true)
+    try {
+      const result = await deleteMessages(ids)
+      if (!result) return
+      const failed = result.gotifyFailed + result.ntfyFailed
+      toast(failed > 0 ? copy.deleteThreadPartial : copy.deleteThreadDone)
+      exitSelect()
+      setMenu(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   if (!thread) {
     return (
@@ -67,18 +148,55 @@ export function MessageThread({ onBack }: Props) {
   return (
     <section className="thread-pane">
       <header className="thread-header">
-        <button
-          type="button"
-          className="back-btn"
-          onClick={onBack}
-          aria-label={copy.backAria}
-        >
-          <ChevronLeft size={20} strokeWidth={2.5} aria-hidden />
-        </button>
-        <h1 className="thread-peer">{thread.peer}</h1>
+        {selecting ? (
+          <>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={exitSelect}
+              aria-label={copy.listSelectCancel}
+              title={copy.listSelectCancel}
+            >
+              <X size={18} strokeWidth={2} aria-hidden />
+            </button>
+            <h1 className="thread-peer">
+              {copy.listSelectCount} {selected.size}
+            </h1>
+            <button
+              type="button"
+              className="text-btn danger"
+              disabled={deleting || selected.size === 0}
+              onClick={() => void deleteMessageIds([...selected])}
+            >
+              {copy.listSelectDelete}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="back-btn"
+              onClick={onBack}
+              aria-label={copy.backAria}
+            >
+              <ChevronLeft size={20} strokeWidth={2.5} aria-hidden />
+            </button>
+            <h1 className="thread-peer">{thread.peer}</h1>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => void onDeleteThread()}
+              disabled={deleting}
+              aria-label={copy.deleteThreadAria}
+              title={copy.deleteThreadAria}
+            >
+              <Trash2 size={18} strokeWidth={2} aria-hidden />
+            </button>
+          </>
+        )}
       </header>
 
-      <div className="thread-scroll">
+      <div className={`thread-scroll${selecting ? ' is-selecting' : ''}`}>
         {messages.length === 0 ? (
           <p className="muted thread-placeholder">{copy.emptyThreadMessages}</p>
         ) : (
@@ -92,56 +210,60 @@ export function MessageThread({ onBack }: Props) {
                 message={msg}
                 showStamp={showStamp}
                 showSource={showStamp || sourceChanged}
+                selecting={selecting}
+                checked={selected.has(msg.id)}
+                onOpenMenu={(x, y) => {
+                  if (selecting) return
+                  setMenu({
+                    messageId: msg.id,
+                    body: msg.body,
+                    rect: pointRect(x, y),
+                  })
+                }}
+                onLongPress={(x, y) => {
+                  if (selecting) return
+                  suppressClickRef.current = true
+                  setMenu({
+                    messageId: msg.id,
+                    body: msg.body,
+                    rect: pointRect(x, y),
+                  })
+                }}
+                onSelectToggle={() => {
+                  if (suppressClickRef.current) {
+                    suppressClickRef.current = false
+                    return
+                  }
+                  if (selecting) toggleSelected(msg.id)
+                }}
               />
             )
           })
         )}
         <div ref={bottomRef} />
       </div>
+
+      {menu ? (
+        <BubbleContextMenu
+          target={menu}
+          onClose={() => setMenu(null)}
+          onCopy={async () => {
+            const ok = await copyText(menu.body)
+            if (ok) toast(copy.toastCopied)
+            setMenu(null)
+          }}
+          onDelete={() => {
+            void deleteMessageIds([menu.messageId])
+          }}
+          onSelect={() => {
+            setSelecting(true)
+            setSelected(new Set([menu.messageId]))
+            setMenu(null)
+          }}
+        />
+      ) : null}
     </section>
   )
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    if (window.isSecureContext && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text)
-      return true
-    }
-  } catch {
-    // 局域网 HTTP / 权限拒绝时改用选区复制。
-  }
-  try {
-    const area = document.createElement('textarea')
-    area.value = text
-    area.setAttribute('readonly', '')
-    area.style.cssText =
-      'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;padding:0;border:0;'
-    document.body.appendChild(area)
-    area.focus()
-    area.select()
-    area.setSelectionRange(0, text.length)
-    const ok = document.execCommand('copy')
-    area.remove()
-    return ok
-  } catch {
-    return false
-  }
-}
-
-function placeActionMenu(rect: DOMRect, width: number, height: number) {
-  const gap = 8
-  const margin = 10
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  let left = rect.left + rect.width / 2 - width / 2
-  left = Math.min(Math.max(margin, left), vw - width - margin)
-  let top = rect.bottom + gap
-  if (top + height > vh - margin) {
-    top = rect.top - height - gap
-  }
-  top = Math.min(Math.max(margin, top), vh - height - margin)
-  return { left, top }
 }
 
 function MsgActionMenu({
@@ -236,7 +358,103 @@ function MsgActionMenu({
   )
 }
 
-function MessageBody({ body }: { body: string }) {
+function BubbleContextMenu({
+  target,
+  onClose,
+  onCopy,
+  onDelete,
+  onSelect,
+}: {
+  target: BubbleMenuState
+  onClose: () => void
+  onCopy: () => void
+  onDelete: () => void
+  onSelect: () => void
+}) {
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [style, setStyle] = useState<CSSProperties>({
+    position: 'fixed',
+    left: 0,
+    top: 0,
+    visibility: 'hidden',
+  })
+  const menuId = useId()
+  const close = useEffectEvent(onClose)
+
+  useLayoutEffect(() => {
+    const el = menuRef.current
+    if (!el) return
+    const box = el.getBoundingClientRect()
+    const pos = placeActionMenu(target.rect, box.width, box.height)
+    setStyle({
+      position: 'fixed',
+      left: pos.left,
+      top: pos.top,
+      visibility: 'visible',
+    })
+  }, [target])
+
+  useEffect(() => {
+    const onPointer = (event: PointerEvent) => {
+      const el = menuRef.current
+      if (!el) return
+      if (event.target instanceof Node && el.contains(event.target)) return
+      close()
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close()
+    }
+    window.addEventListener('pointerdown', onPointer, true)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointer, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [close])
+
+  return (
+    <div
+      ref={menuRef}
+      id={menuId}
+      className="msg-action-pop"
+      role="menu"
+      style={style}
+    >
+      <button
+        type="button"
+        className="msg-action-item"
+        role="menuitem"
+        onClick={onCopy}
+      >
+        {copy.listMenuCopy}
+      </button>
+      <button
+        type="button"
+        className="msg-action-item"
+        role="menuitem"
+        onClick={onSelect}
+      >
+        {copy.listMenuSelect}
+      </button>
+      <button
+        type="button"
+        className="msg-action-item is-danger"
+        role="menuitem"
+        onClick={onDelete}
+      >
+        {copy.listMenuDelete}
+      </button>
+    </div>
+  )
+}
+
+function MessageBody({
+  body,
+  interactive,
+}: {
+  body: string
+  interactive: boolean
+}) {
   const { mark: hangMark, rest } = takeHangPunct(body)
   const spaced = spaceMixedScript(rest)
   const code = extractOtp(spaced)
@@ -248,6 +466,7 @@ function MessageBody({ body }: { body: string }) {
     value: string,
     event: ReactMouseEvent<HTMLElement>,
   ) {
+    if (!interactive) return
     event.preventDefault()
     event.stopPropagation()
     setAction({
@@ -273,6 +492,7 @@ function MessageBody({ body }: { body: string }) {
                 className="msg-link"
                 aria-label={`${copy.openLinkAria} ${part.value}`}
                 aria-haspopup="menu"
+                disabled={!interactive}
                 onClick={(event) => openAction('url', part.value, event)}
               >
                 {part.value}
@@ -286,6 +506,7 @@ function MessageBody({ body }: { body: string }) {
               className="msg-link is-otp"
               aria-label={`${copy.otpHint} ${part.value}`}
               aria-haspopup="menu"
+              disabled={!interactive}
               onClick={(event) => openAction('otp', part.value, event)}
             >
               {part.value}
@@ -311,19 +532,62 @@ function BubbleBlock({
   message,
   showStamp,
   showSource,
+  selecting,
+  checked,
+  onOpenMenu,
+  onLongPress,
+  onSelectToggle,
 }: {
   message: Message
   showStamp: boolean
   showSource: boolean
+  selecting: boolean
+  checked: boolean
+  onOpenMenu: (x: number, y: number) => void
+  onLongPress: (x: number, y: number) => void
+  onSelectToggle: () => void
 }) {
   const gotifyApps = useInboxStore((s) => s.gotifyApps)
   const sourceLabel = showSource
     ? message.source ||
       (message.appId != null ? gotifyApps[message.appId] : undefined)
     : undefined
+  const pressTimer = useRef<number | null>(null)
+  const origin = useRef<{ x: number; y: number } | null>(null)
+
+  function clearPress() {
+    if (pressTimer.current != null) {
+      window.clearTimeout(pressTimer.current)
+      pressTimer.current = null
+    }
+    origin.current = null
+  }
+
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    if (selecting) return
+    clearPress()
+    origin.current = { x: event.clientX, y: event.clientY }
+    const x = event.clientX
+    const y = event.clientY
+    pressTimer.current = window.setTimeout(() => {
+      pressTimer.current = null
+      origin.current = null
+      onLongPress(x, y)
+    }, LONG_PRESS_MS)
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!origin.current || pressTimer.current == null) return
+    const dx = event.clientX - origin.current.x
+    const dy = event.clientY - origin.current.y
+    if (dx * dx + dy * dy > LONG_PRESS_MOVE_PX * LONG_PRESS_MOVE_PX) {
+      clearPress()
+    }
+  }
 
   return (
-    <div className="bubble-block">
+    <div className={`bubble-block${selecting && checked ? ' is-checked' : ''}`}>
       {showStamp || sourceLabel ? (
         <time
           className="thread-stamp"
@@ -339,8 +603,30 @@ function BubbleBlock({
         </time>
       ) : null}
       <article className="bubble-row in">
-        <div className="bubble in">
-          <MessageBody body={message.body} />
+        {selecting ? (
+          <span
+            className={`select-check${checked ? ' on' : ''}`}
+            aria-hidden
+          >
+            {checked ? <Check size={14} strokeWidth={2.5} /> : null}
+          </span>
+        ) : null}
+        <div
+          className={`bubble in${selecting ? ' is-selectable' : ''}`}
+          onClick={selecting ? onSelectToggle : undefined}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            if (selecting) return
+            clearPress()
+            onOpenMenu(event.clientX, event.clientY)
+          }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={clearPress}
+          onPointerCancel={clearPress}
+          onPointerLeave={clearPress}
+        >
+          <MessageBody body={message.body} interactive={!selecting} />
         </div>
       </article>
     </div>

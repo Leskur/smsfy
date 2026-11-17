@@ -23,10 +23,12 @@ function AppShell() {
   const threadMatch = useMatch('/sms/:peer')
   const settingsOpen = Boolean(useMatch(SETTINGS_PATH))
   const select = useInboxStore((s) => s.select)
+  const offlineReady = useInboxStore((s) => s.offlineReady)
   const nav = useAppNavigate()
   useApplyTheme()
   const { demoActive } = useDemoInbox()
-  useSync(!demoActive)
+  // Wait for IndexedDB mirror so cold start is not wiped by an empty sync race.
+  useSync(!demoActive && offlineReady)
 
   const peerParam = threadMatch?.params.peer
     ? decodeURIComponent(threadMatch.params.peer)
@@ -66,18 +68,24 @@ function AppShell() {
 }
 
 function BootGate({ children }: { children: ReactNode }) {
-  const [hasHydrated, setHasHydrated] = useState(() =>
+  const [settingsReady, setSettingsReady] = useState(() =>
     useSettingsStore.persist.hasHydrated(),
   )
+  const offlineReady = useInboxStore((s) => s.offlineReady)
+  const hydrateFromOffline = useInboxStore((s) => s.hydrateFromOffline)
 
   useEffect(() => {
-    const finish = () => setHasHydrated(true)
+    const finish = () => setSettingsReady(true)
     const unsub = useSettingsStore.persist.onFinishHydration(finish)
     if (useSettingsStore.persist.hasHydrated()) finish()
     return unsub
   }, [])
 
-  if (!hasHydrated) {
+  useEffect(() => {
+    void hydrateFromOffline()
+  }, [hydrateFromOffline])
+
+  if (!settingsReady || !offlineReady) {
     return (
       <div className="app-loading" role="status" aria-live="polite">
         <BrandLogo className="loading-logo" size={64} />
