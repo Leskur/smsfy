@@ -13,11 +13,28 @@ export function resolveEffectiveTheme(
     : 'light'
 }
 
+const THEME_COLORS: Record<EffectiveTheme, string> = {
+  light: '#f3f7fc',
+  dark: '#111111',
+}
+
+function syncThemeColor(effective: EffectiveTheme) {
+  const color = THEME_COLORS[effective]
+  let meta = document.querySelector('meta[name="theme-color"]')
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.setAttribute('name', 'theme-color')
+    document.head.appendChild(meta)
+  }
+  meta.setAttribute('content', color)
+}
+
 export function applyTheme(preference: ThemePreference): EffectiveTheme {
   const effective = resolveEffectiveTheme(preference)
   const root = document.documentElement
   root.dataset.theme = effective
   root.style.colorScheme = effective
+  syncThemeColor(effective)
   return effective
 }
 
