@@ -1,5 +1,5 @@
 import sharp from 'sharp'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -46,10 +46,5 @@ await writePng(180, 'apple-touch-icon.png')
 await writePng(192, 'icon-192.png')
 await writePng(512, 'icon-512.png')
 await writeMaskable(512, 'icon-512-maskable.png')
-
-await writeFile(
-  path.join(outDir, '.pwa-icons-generated'),
-  `generated ${new Date().toISOString()}\n`,
-)
 
 console.log('PWA icons written to public/')
