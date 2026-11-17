@@ -8,12 +8,12 @@ import { BrandLogo } from './components/BrandLogo'
 import { MessageList } from './components/MessageList'
 import { MessageThread } from './components/MessageThread'
 import { SettingsScreen } from './components/SettingsScreen'
+import { ConfirmHost } from './components/ConfirmHost'
 import { ToastHost } from './components/ToastHost'
 import { useAppNavigate } from './hooks/useAppNavigate'
 import { useApplyTheme } from './hooks/useApplyTheme'
 import { useDemoInbox } from './hooks/useDemoInbox'
 import { useSync } from './hooks/useSync'
-import { copy } from './lib/copy'
 import { peerThreadId } from './lib/ids'
 import { SETTINGS_PATH } from './lib/paths'
 import { useSettingsStore } from './store/settings'
@@ -30,6 +30,7 @@ function AppShell() {
   // Wait for IndexedDB mirror so cold start is not wiped by an empty sync race.
   useSync(!demoActive && offlineReady)
 
+  const threads = useInboxStore((s) => s.threads)
   const peerParam = threadMatch?.params.peer
     ? decodeURIComponent(threadMatch.params.peer)
     : null
@@ -40,6 +41,11 @@ function AppShell() {
     if (settingsOpen) return
     select(routeSelectedId)
   }, [routeSelectedId, settingsOpen, select])
+
+  useEffect(() => {
+    if (!routeSelectedId || settingsOpen) return
+    if (!threads[routeSelectedId]) nav.toHome()
+  }, [routeSelectedId, threads, settingsOpen, nav])
 
   return (
     <div
@@ -89,7 +95,6 @@ function BootGate({ children }: { children: ReactNode }) {
     return (
       <div className="app-loading" role="status" aria-live="polite">
         <BrandLogo className="loading-logo" size={64} />
-        <p className="loading-caption">{copy.loading}</p>
       </div>
     )
   }
@@ -113,6 +118,7 @@ export default function App() {
         </Routes>
       </BootGate>
       <ToastHost />
+      <ConfirmHost />
     </>
   )
 }

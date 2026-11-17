@@ -278,6 +278,114 @@ button {
   }
 }
 
+.confirm-root {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  pointer-events: auto;
+}
+
+.confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.confirm-dialog {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: min(18.5rem, calc(100vw - 2.5rem));
+  margin: 0;
+  padding: 1.25rem 1.15rem 1.05rem;
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  animation: confirm-in 160ms ease-out;
+}
+
+@keyframes confirm-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.confirm-title {
+  margin: 0;
+  padding: 0 0.15rem;
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.confirm-body {
+  margin: 0.5rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+}
+
+.confirm-btn {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 12px;
+  padding: 0.7rem 0.75rem;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.confirm-btn.is-cancel {
+  color: var(--ink);
+  background: var(--control);
+}
+
+.confirm-btn.is-confirm {
+  color: var(--on-accent);
+  background: var(--accent);
+}
+
+.confirm-btn.is-confirm.is-danger {
+  color: #fff;
+  background: var(--unread, var(--danger));
+}
+
+.confirm-btn:active {
+  transform: scale(0.98);
+}
+
 .inbox-layer,
 .thread-wrap {
   display: flex;
@@ -307,23 +415,23 @@ button {
   flex-shrink: 0;
 }
 
-.inbox-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 1rem 0.55rem;
-  background: var(--surface);
-}
-
+.inbox-header,
 .thread-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.55rem 0.75rem;
+  min-height: 3.25rem;
+}
+
+.inbox-header {
+  justify-content: space-between;
+  background: var(--surface);
+}
+
+.thread-header {
   border-bottom: 0;
   background: var(--bg-thread);
-  min-height: 3.25rem;
 }
 
 .thread-peer {
@@ -639,6 +747,10 @@ button {
   align-items: center;
   justify-content: center;
   background: var(--bg-thread);
+}
+
+.thread-empty-logo {
+  opacity: 0.55;
 }
 
 .bubble-block {

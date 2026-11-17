@@ -190,11 +190,6 @@ export function SettingsScreen({ open, onBack }: Props) {
               </div>
             </section>
 
-            <section className="settings-group" aria-label={copy.pipeLegend}>
-              <h2 className="settings-group-title">{copy.pipeLegend}</h2>
-              <p className="settings-footer-hint">{copy.pipeHint}</p>
-            </section>
-
             <section className="settings-group" aria-label={copy.gotifyLegend}>
               <h2 className="settings-group-title">{copy.gotifyLegend}</h2>
               <div className="settings-group-card">

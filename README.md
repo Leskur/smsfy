@@ -13,24 +13,11 @@ npm run dev
 
 ## 设置
 
-1. 点击齿轮打开**设置**
+1. 打开**设置**（列表右上角 ···）
 2. 启用 Gotify 和/或 ntfy 信息源（Gotify：服务器 + 客户端令牌；ntfy：服务器 + 主题，受保护主题可填访问令牌）
-3. 按下方统一约定转发短信
+3. 按 [转发约定](docs/forwarding.md) 在手机端转发短信
 
 设置保存在 `localStorage`（键名仍为 `sms-web-settings`，保持兼容）。
-
-## 转发约定（Gotify / ntfy 统一）
-
-| 字段 | 含义 |
-|------|------|
-| `title` | 对方手机号（会话按此分组） |
-| `message` | 短信正文 |
-| Gotify 应用名 / ntfy 主题 | 显示在时间后作为来源，不作会话名 |
-
-## 会话键
-
-- `peer:<normalized-phone>` — 例如 title `+1 (555) 010-1234` → `peer:+15550101234`
-- 空 title → `peer:unknown`
 
 ## 网络
 

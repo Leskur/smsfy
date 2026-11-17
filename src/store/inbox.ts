@@ -29,12 +29,16 @@ interface InboxState {
   /** Gotify application id → display name (卡1 / 卡2 …) */
   gotifyApps: Record<number, string>
   selectedId: string | null
+  /** Which pane owns multi-select; only one at a time. */
+  selectionOwner: 'list' | 'thread' | null
   status: ConnectionStatus
   loading: boolean
   lastError?: string
   /** True after IndexedDB mirror has been applied (or failed open). */
   offlineReady: boolean
   select: (id: string | null) => void
+  claimSelect: (owner: 'list' | 'thread') => void
+  releaseSelect: (owner: 'list' | 'thread') => void
   setLoading: (loading: boolean) => void
   setStatus: (patch: Partial<ConnectionStatus>) => void
   setError: (error?: string) => void
@@ -125,6 +129,7 @@ export const useInboxStore = create<InboxState>((set, get) => ({
   hiddenMessages: {},
   gotifyApps: {},
   selectedId: null,
+  selectionOwner: null,
   status: { gotify: 'idle', ntfy: 'idle' },
   loading: false,
   offlineReady: false,
@@ -133,6 +138,12 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     set({ selectedId: id })
     if (id) get().markRead(id)
   },
+
+  claimSelect: (owner) => set({ selectionOwner: owner }),
+  releaseSelect: (owner) =>
+    set((state) =>
+      state.selectionOwner === owner ? { selectionOwner: null } : state,
+    ),
 
   setLoading: (loading) => set({ loading }),
   setError: (lastError) => set({ lastError }),

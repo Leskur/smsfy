@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, Trash2, X } from 'lucide-react'
+import { Check, ChevronLeft, MoreVertical, X } from 'lucide-react'
 import {
   useEffect,
   useEffectEvent,
@@ -10,8 +10,13 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { BrandLogo } from './BrandLogo'
 import { copyText } from '../lib/clipboard'
-import { copy } from '../lib/copy'
+import {
+  copy,
+  deleteMessagesTitle,
+  deleteThreadsTitle,
+} from '../lib/copy'
 import {
   formatColorOsStamp,
   shouldShowStamp,
@@ -25,6 +30,7 @@ import {
   threadMessages,
   useInboxStore,
 } from '../store/inbox'
+import { confirmDialog } from '../store/confirm'
 import { toast } from '../store/toast'
 import type { Message } from '../types'
 
@@ -53,13 +59,19 @@ export function MessageThread({ onBack }: Props) {
   const selectedId = useInboxStore((s) => s.selectedId)
   const threads = useInboxStore((s) => s.threads)
   const messagesMap = useInboxStore((s) => s.messages)
+  const selectionOwner = useInboxStore((s) => s.selectionOwner)
+  const claimSelect = useInboxStore((s) => s.claimSelect)
+  const releaseSelect = useInboxStore((s) => s.releaseSelect)
   const deleteConversation = useInboxStore((s) => s.deleteConversation)
   const deleteMessages = useInboxStore((s) => s.deleteMessages)
   const [deleting, setDeleting] = useState(false)
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [menu, setMenu] = useState<BubbleMenuState | null>(null)
+  const [headerMenu, setHeaderMenu] = useState<DOMRect | null>(null)
+  const [blankMenu, setBlankMenu] = useState<DOMRect | null>(null)
   const suppressClickRef = useRef(false)
+  const moreBtnRef = useRef<HTMLButtonElement>(null)
 
   const thread = selectedId ? threads[selectedId] : null
   const messages = selectedId
@@ -76,7 +88,16 @@ export function MessageThread({ onBack }: Props) {
     setSelecting(false)
     setSelected(new Set())
     setMenu(null)
-  }, [selectedId])
+    setHeaderMenu(null)
+    setBlankMenu(null)
+    releaseSelect('thread')
+  }, [selectedId, releaseSelect])
+
+  useEffect(() => {
+    if (selectionOwner === 'thread' || !selecting) return
+    setSelecting(false)
+    setSelected(new Set())
+  }, [selectionOwner, selecting])
 
   useEffect(() => {
     if (!selecting) return
@@ -89,9 +110,16 @@ export function MessageThread({ onBack }: Props) {
     })
   }, [messagesMap, selecting])
 
+  function enterSelect(initial: Set<string> = new Set()) {
+    claimSelect('thread')
+    setSelecting(true)
+    setSelected(initial)
+  }
+
   function exitSelect() {
     setSelecting(false)
     setSelected(new Set())
+    releaseSelect('thread')
   }
 
   function toggleSelected(messageId: string) {
@@ -105,7 +133,13 @@ export function MessageThread({ onBack }: Props) {
 
   async function onDeleteThread() {
     if (!selectedId || deleting || selecting) return
-    if (!window.confirm(copy.deleteThreadConfirm)) return
+    const ok = await confirmDialog({
+      title: deleteThreadsTitle(1),
+      confirmLabel: copy.dialogDelete,
+      cancelLabel: copy.dialogCancel,
+      danger: true,
+    })
+    if (!ok) return
     setDeleting(true)
     try {
       const result = await deleteConversation(selectedId)
@@ -120,7 +154,13 @@ export function MessageThread({ onBack }: Props) {
 
   async function deleteMessageIds(ids: string[]) {
     if (ids.length === 0 || deleting) return
-    if (!window.confirm(copy.deleteMessagesConfirm)) return
+    const ok = await confirmDialog({
+      title: deleteMessagesTitle(ids.length),
+      confirmLabel: copy.dialogDelete,
+      cancelLabel: copy.dialogCancel,
+      danger: true,
+    })
+    if (!ok) return
     setDeleting(true)
     try {
       const result = await deleteMessages(ids)
@@ -136,10 +176,9 @@ export function MessageThread({ onBack }: Props) {
 
   if (!thread) {
     return (
-      <section className="thread-pane thread-empty">
+      <section className="thread-pane thread-empty" aria-hidden>
         <div className="thread-empty-inner">
-          <p>{copy.emptyThreadTitle}</p>
-          <p className="muted">{copy.emptyThreadHint}</p>
+          <BrandLogo className="loading-logo thread-empty-logo" size={64} />
         </div>
       </section>
     )
@@ -183,20 +222,49 @@ export function MessageThread({ onBack }: Props) {
             </button>
             <h1 className="thread-peer">{thread.peer}</h1>
             <button
+              ref={moreBtnRef}
               type="button"
               className="icon-btn"
-              onClick={() => void onDeleteThread()}
               disabled={deleting}
-              aria-label={copy.deleteThreadAria}
-              title={copy.deleteThreadAria}
+              aria-label={copy.threadMoreAria}
+              title={copy.threadMoreAria}
+              aria-haspopup="menu"
+              aria-expanded={headerMenu != null}
+              onClick={() => {
+                const el = moreBtnRef.current
+                if (!el) return
+                setMenu(null)
+                setHeaderMenu((open) =>
+                  open ? null : el.getBoundingClientRect(),
+                )
+              }}
             >
-              <Trash2 size={18} strokeWidth={2} aria-hidden />
+              <MoreVertical size={18} strokeWidth={2} aria-hidden />
             </button>
           </>
         )}
       </header>
 
-      <div className={`thread-scroll${selecting ? ' is-selecting' : ''}`}>
+      <div
+        className={`thread-scroll${selecting ? ' is-selecting' : ''}`}
+        onContextMenu={(event) => {
+          if (selecting) {
+            event.preventDefault()
+            exitSelect()
+            setMenu(null)
+            setHeaderMenu(null)
+            setBlankMenu(null)
+            return
+          }
+          if (event.target instanceof Element && event.target.closest('.bubble')) {
+            return
+          }
+          event.preventDefault()
+          setMenu(null)
+          setHeaderMenu(null)
+          setBlankMenu(pointRect(event.clientX, event.clientY))
+        }}
+      >
         {messages.length === 0 ? (
           <p className="muted thread-placeholder">{copy.emptyThreadMessages}</p>
         ) : (
@@ -243,6 +311,32 @@ export function MessageThread({ onBack }: Props) {
         <div ref={bottomRef} />
       </div>
 
+      {headerMenu ? (
+        <HeaderMoreMenu
+          anchor={headerMenu}
+          onClose={() => setHeaderMenu(null)}
+          onSelect={() => {
+            setHeaderMenu(null)
+            enterSelect()
+          }}
+          onDelete={() => {
+            setHeaderMenu(null)
+            void onDeleteThread()
+          }}
+        />
+      ) : null}
+
+      {blankMenu ? (
+        <BlankSelectMenu
+          anchor={blankMenu}
+          onClose={() => setBlankMenu(null)}
+          onSelect={() => {
+            setBlankMenu(null)
+            enterSelect()
+          }}
+        />
+      ) : null}
+
       {menu ? (
         <BubbleContextMenu
           target={menu}
@@ -256,13 +350,130 @@ export function MessageThread({ onBack }: Props) {
             void deleteMessageIds([menu.messageId])
           }}
           onSelect={() => {
-            setSelecting(true)
-            setSelected(new Set([menu.messageId]))
+            enterSelect(new Set([menu.messageId]))
             setMenu(null)
           }}
         />
       ) : null}
     </section>
+  )
+}
+
+function useAnchoredMenu(anchor: DOMRect, onClose: () => void) {
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [style, setStyle] = useState<CSSProperties>({
+    position: 'fixed',
+    left: 0,
+    top: 0,
+    visibility: 'hidden',
+  })
+  const close = useEffectEvent(onClose)
+
+  useLayoutEffect(() => {
+    const el = menuRef.current
+    if (!el) return
+    const box = el.getBoundingClientRect()
+    const pos = placeActionMenu(anchor, box.width, box.height)
+    setStyle({
+      position: 'fixed',
+      left: pos.left,
+      top: pos.top,
+      visibility: 'visible',
+    })
+  }, [anchor])
+
+  useEffect(() => {
+    const onPointer = (event: PointerEvent) => {
+      const el = menuRef.current
+      if (!el) return
+      if (event.target instanceof Node && el.contains(event.target)) return
+      close()
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close()
+    }
+    window.addEventListener('pointerdown', onPointer, true)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointer, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [close])
+
+  return { menuRef, style }
+}
+
+function HeaderMoreMenu({
+  anchor,
+  onClose,
+  onSelect,
+  onDelete,
+}: {
+  anchor: DOMRect
+  onClose: () => void
+  onSelect: () => void
+  onDelete: () => void
+}) {
+  const menuId = useId()
+  const { menuRef, style } = useAnchoredMenu(anchor, onClose)
+
+  return (
+    <div
+      ref={menuRef}
+      id={menuId}
+      className="msg-action-pop"
+      role="menu"
+      style={style}
+    >
+      <button
+        type="button"
+        className="msg-action-item"
+        role="menuitem"
+        onClick={onSelect}
+      >
+        {copy.listMenuSelect}
+      </button>
+      <button
+        type="button"
+        className="msg-action-item is-danger"
+        role="menuitem"
+        onClick={onDelete}
+      >
+        {copy.listMenuDelete}
+      </button>
+    </div>
+  )
+}
+
+function BlankSelectMenu({
+  anchor,
+  onClose,
+  onSelect,
+}: {
+  anchor: DOMRect
+  onClose: () => void
+  onSelect: () => void
+}) {
+  const menuId = useId()
+  const { menuRef, style } = useAnchoredMenu(anchor, onClose)
+
+  return (
+    <div
+      ref={menuRef}
+      id={menuId}
+      className="msg-action-pop"
+      role="menu"
+      style={style}
+    >
+      <button
+        type="button"
+        className="msg-action-item"
+        role="menuitem"
+        onClick={onSelect}
+      >
+        {copy.listMenuSelect}
+      </button>
+    </div>
   )
 }
 
@@ -564,7 +775,8 @@ function BubbleBlock({
   }
 
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (event.pointerType === 'mouse' && event.button !== 0) return
+    // Long-press is touch/pen only; PC uses right-click.
+    if (event.pointerType === 'mouse') return
     if (selecting) return
     clearPress()
     origin.current = { x: event.clientX, y: event.clientY }
@@ -616,8 +828,12 @@ function BubbleBlock({
           onClick={selecting ? onSelectToggle : undefined}
           onContextMenu={(event) => {
             event.preventDefault()
-            if (selecting) return
             clearPress()
+            if (selecting) {
+              // Bubble to thread scroll → exit multi-select.
+              return
+            }
+            event.stopPropagation()
             onOpenMenu(event.clientX, event.clientY)
           }}
           onPointerDown={onPointerDown}

@@ -8,16 +8,34 @@ import '@fontsource/figtree/600.css'
 import '@fontsource/figtree/700.css'
 import App from './App.tsx'
 import { applyTheme, readStoredThemePreference } from './lib/theme'
+import { useInboxStore } from './store/inbox'
+import { useSettingsStore } from './store/settings'
 import './index.css'
 
 applyTheme(readStoredThemePreference())
 
 registerSW({ immediate: true })
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </StrictMode>,
-)
+async function waitSettingsHydrated() {
+  if (useSettingsStore.persist.hasHydrated()) return
+  await new Promise<void>((resolve) => {
+    const unsub = useSettingsStore.persist.onFinishHydration(() => {
+      unsub()
+      resolve()
+    })
+  })
+}
+
+void (async () => {
+  await Promise.all([
+    waitSettingsHydrated(),
+    useInboxStore.getState().hydrateFromOffline(),
+  ])
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </StrictMode>,
+  )
+})()

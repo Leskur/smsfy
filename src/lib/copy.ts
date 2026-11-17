@@ -16,11 +16,11 @@ export const copy = {
   scrollTopAria: '回到顶部',
   unreadAria: '未读',
   deleteThreadAria: '删除此号码',
-  deleteThreadConfirm: '删除后本机不再显示该号码的短信，并会尽量从信息源移除。确定删除？',
-  deleteThreadConfirmMany: '删除后本机不再显示所选号码的短信，并会尽量从信息源移除。确定删除？',
+  threadMoreAria: '更多',
   deleteThreadDone: '已删除',
   deleteThreadPartial: '本机已删除，部分云端消息未能移除',
-  deleteMessagesConfirm: '删除后本机不再显示所选短信，并会尽量从信息源移除。确定删除？',
+  dialogCancel: '取消',
+  dialogDelete: '删除',
   listMenuCopy: '复制',
   listMenuDelete: '删除',
   listMenuSelect: '多选',
@@ -44,10 +44,6 @@ export const copy = {
   themeLight: '浅色',
   themeDark: '深色',
   themeAria: '外观模式',
-
-  pipeLegend: '转发约定',
-  pipeHint:
-    'Gotify / ntfy 统一：title = 对方手机号，message = 短信正文。Gotify 应用名与 ntfy 主题显示在时间后作为来源，不作会话名。',
 
   gotifyLegend: 'Gotify',
   gotifyEnable: '启用 Gotify',
@@ -80,6 +76,14 @@ export const copy = {
   gotifyWsFallback:
     '实时连接不可用，已改为定时刷新。请检查 Gotify 的 AllowedWebSocketOrigins。',
 } as const
+
+export function deleteThreadsTitle(count: number): string {
+  return `要删除${count}组对话吗？`
+}
+
+export function deleteMessagesTitle(count: number): string {
+  return `要删除${count}条信息吗？`
+}
 
 export function statusLabel(
   state: 'idle' | 'connecting' | 'live' | 'polling' | 'error',
