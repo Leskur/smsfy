@@ -47,6 +47,18 @@ function AppShell() {
     if (!threads[routeSelectedId]) nav.toHome()
   }, [routeSelectedId, threads, settingsOpen, nav])
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== ',' || event.altKey || event.shiftKey) return
+      if (!(event.metaKey || event.ctrlKey)) return
+      event.preventDefault()
+      if (settingsOpen) nav.back()
+      else nav.toSettings()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [settingsOpen, nav])
+
   return (
     <div
       className={`app-shell${showThread ? ' thread-open' : ''}${settingsOpen ? ' settings-open' : ''}`}
