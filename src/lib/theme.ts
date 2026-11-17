@@ -13,13 +13,23 @@ export function resolveEffectiveTheme(
     : 'light'
 }
 
+/** Fallback if `--bg` is not readable yet (matches `index.css`). */
 const THEME_COLORS: Record<EffectiveTheme, string> = {
   light: '#f3f7fc',
   dark: '#111111',
 }
 
-function syncThemeColor(effective: EffectiveTheme) {
-  const color = THEME_COLORS[effective]
+function readPageBackground(effective: EffectiveTheme): string {
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue('--bg')
+    .trim()
+  return raw || THEME_COLORS[effective]
+}
+
+/** Keep OS chrome (status / title bar) aligned with the page background. */
+function syncChromeTheme(effective: EffectiveTheme) {
+  const color = readPageBackground(effective)
+
   let meta = document.querySelector('meta[name="theme-color"]')
   if (!meta) {
     meta = document.createElement('meta')
@@ -27,6 +37,17 @@ function syncThemeColor(effective: EffectiveTheme) {
     document.head.appendChild(meta)
   }
   meta.setAttribute('content', color)
+
+  let apple = document.querySelector(
+    'meta[name="apple-mobile-web-app-status-bar-style"]',
+  )
+  if (!apple) {
+    apple = document.createElement('meta')
+    apple.setAttribute('name', 'apple-mobile-web-app-status-bar-style')
+    document.head.appendChild(apple)
+  }
+  // iOS: light page → default; dark page → black status bar.
+  apple.setAttribute('content', effective === 'dark' ? 'black' : 'default')
 }
 
 export function applyTheme(preference: ThemePreference): EffectiveTheme {
@@ -34,7 +55,7 @@ export function applyTheme(preference: ThemePreference): EffectiveTheme {
   const root = document.documentElement
   root.dataset.theme = effective
   root.style.colorScheme = effective
-  syncThemeColor(effective)
+  syncChromeTheme(effective)
   return effective
 }
 

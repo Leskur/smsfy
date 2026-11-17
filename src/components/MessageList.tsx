@@ -88,7 +88,7 @@ export function MessageList({
           aria-label={copy.settingsAria}
           title={copy.settings}
         >
-          <Settings size={20} strokeWidth={1.75} aria-hidden />
+          <Settings size={18} strokeWidth={2} aria-hidden />
         </button>
       </header>
 
@@ -155,9 +155,6 @@ export function MessageList({
                             ? spaceMixedScript(thread.lastPreview)
                             : ' '}
                         </span>
-                        {thread.unread > 0 ? (
-                          <span className="unread-badge">{thread.unread}</span>
-                        ) : null}
                       </div>
                     </div>
                   </button>

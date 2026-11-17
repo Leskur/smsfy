@@ -4,7 +4,6 @@ export const copy = {
   inboxTitle: '信息',
   settings: '设置',
   settingsAria: '设置',
-  save: '保存',
   backAria: '返回信息列表',
   settingsCloseAria: '关闭设置',
   loading: '加载中',
@@ -37,6 +36,8 @@ export const copy = {
   gotifyEnable: '启用 Gotify',
   gotifyServer: '服务器地址',
   gotifyToken: '客户端令牌',
+  gotifyTokenShow: '显示令牌',
+  gotifyTokenHide: '隐藏令牌',
 
   ntfyLegend: 'ntfy',
   ntfyEnable: '启用 ntfy',

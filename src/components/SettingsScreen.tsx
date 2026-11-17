@@ -1,5 +1,5 @@
-import { ArrowLeft } from 'lucide-react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { ChevronLeft, Eye, EyeOff } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { copy, statusLabel } from '../lib/copy'
 import { NTFY_ENABLED } from '../lib/features'
 import { useInboxStore } from '../store/inbox'
@@ -16,6 +16,22 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'light', label: copy.themeLight },
   { value: 'dark', label: copy.themeDark },
 ]
+
+function normalizeGotify(next: GotifySettings): GotifySettings {
+  return {
+    ...next,
+    baseUrl: next.baseUrl.trim().replace(/\/+$/, ''),
+    clientToken: next.clientToken.trim(),
+  }
+}
+
+function normalizeNtfy(next: NtfySettings): NtfySettings {
+  return {
+    ...next,
+    serverUrl: next.serverUrl.trim().replace(/\/+$/, ''),
+    topics: next.topics.trim(),
+  }
+}
 
 function Switch({
   checked,
@@ -61,6 +77,11 @@ export function SettingsScreen({ open, onBack }: Props) {
 
   const [draftGotify, setDraftGotify] = useState<GotifySettings>(gotify)
   const [draftNtfy, setDraftNtfy] = useState<NtfySettings>(ntfy)
+  const [showToken, setShowToken] = useState(false)
+  const draftGotifyRef = useRef(draftGotify)
+  const draftNtfyRef = useRef(draftNtfy)
+  draftGotifyRef.current = draftGotify
+  draftNtfyRef.current = draftNtfy
 
   const tab = open ? 0 : -1
 
@@ -68,34 +89,40 @@ export function SettingsScreen({ open, onBack }: Props) {
     if (open) {
       setDraftGotify(gotify)
       setDraftNtfy(ntfy)
+      setShowToken(false)
     }
   }, [open, gotify, ntfy])
+
+  function commitGotify(next: GotifySettings) {
+    const normalized = normalizeGotify(next)
+    setDraftGotify(normalized)
+    setGotify(normalized)
+  }
+
+  function commitNtfy(next: NtfySettings) {
+    const normalized = normalizeNtfy(next)
+    setDraftNtfy(normalized)
+    setNtfy(normalized)
+  }
+
+  function flushAndBack() {
+    commitGotify(draftGotifyRef.current)
+    if (NTFY_ENABLED) commitNtfy(draftNtfyRef.current)
+    onBack()
+  }
 
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onBack()
+      if (event.key === 'Escape') {
+        commitGotify(draftGotifyRef.current)
+        if (NTFY_ENABLED) commitNtfy(draftNtfyRef.current)
+        onBack()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onBack])
-
-  function save(event: FormEvent) {
-    event.preventDefault()
-    setGotify({
-      ...draftGotify,
-      baseUrl: draftGotify.baseUrl.trim().replace(/\/+$/, ''),
-      clientToken: draftGotify.clientToken.trim(),
-    })
-    if (NTFY_ENABLED) {
-      setNtfy({
-        ...draftNtfy,
-        serverUrl: draftNtfy.serverUrl.trim().replace(/\/+$/, ''),
-        topics: draftNtfy.topics.trim(),
-      })
-    }
-    onBack()
-  }
+  }, [open, onBack, setGotify, setNtfy])
 
   return (
     <div
@@ -108,7 +135,7 @@ export function SettingsScreen({ open, onBack }: Props) {
         className="settings-backdrop"
         aria-label={copy.settingsCloseAria}
         tabIndex={tab}
-        onClick={onBack}
+        onClick={flushAndBack}
       />
       <section
         className="settings-panel"
@@ -116,167 +143,195 @@ export function SettingsScreen({ open, onBack }: Props) {
         aria-modal="true"
         aria-labelledby="settings-title"
       >
-        <form className="settings-form-shell" onSubmit={save}>
+        <div className="settings-form-shell">
           <header className="settings-header">
             <button
               type="button"
               className="back-btn"
-              onClick={onBack}
+              onClick={flushAndBack}
               aria-label={copy.backAria}
               tabIndex={tab}
             >
-              <ArrowLeft size={20} strokeWidth={1.75} aria-hidden />
+              <ChevronLeft size={20} strokeWidth={2.5} aria-hidden />
             </button>
             <h1 id="settings-title" className="settings-title">
               {copy.settingsTitle}
             </h1>
-            <button type="submit" className="settings-nav-save" tabIndex={tab}>
-              {copy.save}
-            </button>
           </header>
 
           <div className="settings-form">
-          <section className="settings-group" aria-label={copy.themeLegend}>
-            <h2 className="settings-group-title">{copy.themeLegend}</h2>
-            <div className="settings-group-card">
-              <div className="settings-row settings-row-stack">
-                <div
-                  className="theme-segment"
-                  role="radiogroup"
-                  aria-label={copy.themeAria}
-                >
-                  {THEME_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={theme === option.value}
-                      className={`theme-segment-btn${theme === option.value ? ' active' : ''}`}
-                      onClick={() => setTheme(option.value)}
-                      tabIndex={tab}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+            <section className="settings-group" aria-label={copy.themeLegend}>
+              <h2 className="settings-group-title">{copy.themeLegend}</h2>
+              <div className="settings-group-card">
+                <div className="settings-row settings-row-stack">
+                  <div
+                    className="theme-segment"
+                    role="radiogroup"
+                    aria-label={copy.themeAria}
+                  >
+                    {THEME_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={theme === option.value}
+                        className={`theme-segment-btn${theme === option.value ? ' active' : ''}`}
+                        onClick={() => setTheme(option.value)}
+                        tabIndex={tab}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section className="settings-group" aria-label={copy.gotifyLegend}>
-            <h2 className="settings-group-title">{copy.gotifyLegend}</h2>
-            <div className="settings-group-card">
-              <div className="settings-row">
-                <span className="settings-row-label">{copy.gotifyEnable}</span>
-                <Switch
-                  checked={draftGotify.enabled}
-                  onChange={(enabled) =>
-                    setDraftGotify((s) => ({ ...s, enabled }))
-                  }
-                  tabIndex={tab}
-                  label={copy.gotifyEnable}
-                />
+            <section className="settings-group" aria-label={copy.gotifyLegend}>
+              <h2 className="settings-group-title">{copy.gotifyLegend}</h2>
+              <div className="settings-group-card">
+                <div className="settings-row">
+                  <span className="settings-row-label">{copy.gotifyEnable}</span>
+                  <Switch
+                    checked={draftGotify.enabled}
+                    onChange={(enabled) =>
+                      commitGotify({ ...draftGotify, enabled })
+                    }
+                    tabIndex={tab}
+                    label={copy.gotifyEnable}
+                  />
+                </div>
+                <label className="settings-row settings-row-field">
+                  <span className="settings-row-label">{copy.gotifyServer}</span>
+                  <input
+                    type="url"
+                    className="settings-input"
+                    placeholder="https://gotify.example.com"
+                    value={draftGotify.baseUrl}
+                    onChange={(e) =>
+                      setDraftGotify((s) => ({ ...s, baseUrl: e.target.value }))
+                    }
+                    onBlur={() => commitGotify(draftGotifyRef.current)}
+                    autoComplete="off"
+                    tabIndex={tab}
+                  />
+                </label>
+                <div className="settings-row settings-row-field">
+                  <span className="settings-row-label">{copy.gotifyToken}</span>
+                  <div className="settings-input-wrap">
+                    <input
+                      type={showToken ? 'text' : 'password'}
+                      className="settings-input"
+                      placeholder="Clients → token"
+                      value={draftGotify.clientToken}
+                      onChange={(e) =>
+                        setDraftGotify((s) => ({
+                          ...s,
+                          clientToken: e.target.value,
+                        }))
+                      }
+                      onBlur={() => commitGotify(draftGotifyRef.current)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      tabIndex={tab}
+                    />
+                    <button
+                      type="button"
+                      className="settings-input-reveal"
+                      aria-label={
+                        showToken ? copy.gotifyTokenHide : copy.gotifyTokenShow
+                      }
+                      aria-pressed={showToken}
+                      tabIndex={tab}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => setShowToken((v) => !v)}
+                    >
+                      {showToken ? (
+                        <EyeOff size={18} strokeWidth={2} aria-hidden />
+                      ) : (
+                        <Eye size={18} strokeWidth={2} aria-hidden />
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <label className="settings-row settings-row-field">
-                <span className="settings-row-label">{copy.gotifyServer}</span>
-                <input
-                  type="url"
-                  className="settings-input"
-                  placeholder="https://gotify.example.com"
-                  value={draftGotify.baseUrl}
-                  onChange={(e) =>
-                    setDraftGotify((s) => ({ ...s, baseUrl: e.target.value }))
-                  }
-                  autoComplete="off"
-                  tabIndex={tab}
-                />
-              </label>
-              <label className="settings-row settings-row-field">
-                <span className="settings-row-label">{copy.gotifyToken}</span>
-                <input
-                  type="password"
-                  className="settings-input"
-                  placeholder="Clients → token"
-                  value={draftGotify.clientToken}
-                  onChange={(e) =>
-                    setDraftGotify((s) => ({
-                      ...s,
-                      clientToken: e.target.value,
-                    }))
-                  }
-                  autoComplete="off"
-                  tabIndex={tab}
-                />
-              </label>
-            </div>
-            {draftGotify.enabled ? (
-              <p className="settings-footer-hint pipe-status">
-                {copy.statusLabel}：{statusLabel(status.gotify)}
-                {status.gotifyError ? ` — ${status.gotifyError}` : ''}
-              </p>
-            ) : null}
-          </section>
+              {draftGotify.enabled ? (
+                <p className="settings-footer-hint pipe-status">
+                  {copy.statusLabel}：{statusLabel(status.gotify)}
+                  {status.gotifyError ? ` — ${status.gotifyError}` : ''}
+                </p>
+              ) : null}
+            </section>
 
-          <section
-            className={`settings-group${NTFY_ENABLED ? '' : ' is-disabled'}`}
-            aria-label={copy.ntfyLegend}
-          >
-            <h2 className="settings-group-title">
-              {copy.ntfyLegend}
-              {!NTFY_ENABLED ? `（${copy.ntfyComingSoon}）` : null}
-            </h2>
-            <div className="settings-group-card" inert={NTFY_ENABLED ? undefined : true}>
-              <div className="settings-row">
-                <span className="settings-row-label">{copy.ntfyEnable}</span>
-                <Switch
-                  checked={NTFY_ENABLED ? draftNtfy.enabled : false}
-                  onChange={(enabled) =>
-                    setDraftNtfy((s) => ({ ...s, enabled }))
-                  }
-                  tabIndex={tab}
-                  label={copy.ntfyEnable}
-                  disabled={!NTFY_ENABLED}
-                />
+            <section
+              className={`settings-group${NTFY_ENABLED ? '' : ' is-disabled'}`}
+              aria-label={copy.ntfyLegend}
+            >
+              <h2 className="settings-group-title">
+                {copy.ntfyLegend}
+                {!NTFY_ENABLED ? `（${copy.ntfyComingSoon}）` : null}
+              </h2>
+              <div
+                className="settings-group-card"
+                inert={NTFY_ENABLED ? undefined : true}
+              >
+                <div className="settings-row">
+                  <span className="settings-row-label">{copy.ntfyEnable}</span>
+                  <Switch
+                    checked={NTFY_ENABLED ? draftNtfy.enabled : false}
+                    onChange={(enabled) =>
+                      commitNtfy({ ...draftNtfy, enabled })
+                    }
+                    tabIndex={tab}
+                    label={copy.ntfyEnable}
+                    disabled={!NTFY_ENABLED}
+                  />
+                </div>
+                <label className="settings-row settings-row-field">
+                  <span className="settings-row-label">{copy.ntfyServer}</span>
+                  <input
+                    type="url"
+                    className="settings-input"
+                    placeholder="https://ntfy.sh"
+                    value={draftNtfy.serverUrl}
+                    onChange={(e) =>
+                      setDraftNtfy((s) => ({ ...s, serverUrl: e.target.value }))
+                    }
+                    onBlur={() => {
+                      if (NTFY_ENABLED) commitNtfy(draftNtfyRef.current)
+                    }}
+                    autoComplete="off"
+                    tabIndex={NTFY_ENABLED ? tab : -1}
+                    disabled={!NTFY_ENABLED}
+                  />
+                </label>
+                <label className="settings-row settings-row-field">
+                  <span className="settings-row-label">{copy.ntfyTopic}</span>
+                  <input
+                    type="text"
+                    className="settings-input"
+                    placeholder="sms-gateway"
+                    value={draftNtfy.topics}
+                    onChange={(e) =>
+                      setDraftNtfy((s) => ({ ...s, topics: e.target.value }))
+                    }
+                    onBlur={() => {
+                      if (NTFY_ENABLED) commitNtfy(draftNtfyRef.current)
+                    }}
+                    tabIndex={NTFY_ENABLED ? tab : -1}
+                    disabled={!NTFY_ENABLED}
+                  />
+                </label>
               </div>
-              <label className="settings-row settings-row-field">
-                <span className="settings-row-label">{copy.ntfyServer}</span>
-                <input
-                  type="url"
-                  className="settings-input"
-                  placeholder="https://ntfy.sh"
-                  value={draftNtfy.serverUrl}
-                  onChange={(e) =>
-                    setDraftNtfy((s) => ({ ...s, serverUrl: e.target.value }))
-                  }
-                  autoComplete="off"
-                  tabIndex={NTFY_ENABLED ? tab : -1}
-                  disabled={!NTFY_ENABLED}
-                />
-              </label>
-              <label className="settings-row settings-row-field">
-                <span className="settings-row-label">{copy.ntfyTopic}</span>
-                <input
-                  type="text"
-                  className="settings-input"
-                  placeholder="sms-gateway"
-                  value={draftNtfy.topics}
-                  onChange={(e) =>
-                    setDraftNtfy((s) => ({ ...s, topics: e.target.value }))
-                  }
-                  tabIndex={NTFY_ENABLED ? tab : -1}
-                  disabled={!NTFY_ENABLED}
-                />
-              </label>
-            </div>
-            {NTFY_ENABLED && draftNtfy.enabled ? (
-              <p className="settings-footer-hint pipe-status">
-                {copy.statusLabel}：{statusLabel(status.ntfy)}
-                {status.ntfyError ? ` — ${status.ntfyError}` : ''}
-              </p>
-            ) : null}
-          </section>
+              {NTFY_ENABLED && draftNtfy.enabled ? (
+                <p className="settings-footer-hint pipe-status">
+                  {copy.statusLabel}：{statusLabel(status.ntfy)}
+                  {status.ntfyError ? ` — ${status.ntfyError}` : ''}
+                </p>
+              ) : null}
+            </section>
           </div>
-        </form>
+        </div>
       </section>
     </div>
   )

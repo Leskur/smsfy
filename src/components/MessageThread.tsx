@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import {
   useEffect,
   useEffectEvent,
@@ -73,7 +73,7 @@ export function MessageThread({ onBack }: Props) {
           onClick={onBack}
           aria-label={copy.backAria}
         >
-          <ArrowLeft size={20} strokeWidth={1.75} aria-hidden />
+          <ChevronLeft size={20} strokeWidth={2.5} aria-hidden />
         </button>
         <h1 className="thread-peer">{thread.peer}</h1>
       </header>
