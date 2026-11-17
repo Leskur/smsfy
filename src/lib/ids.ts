@@ -1,4 +1,4 @@
-/** Peer phone from message title → thread key. */
+/** Peer phone from pipe `title` → thread key (Gotify / ntfy). */
 
 import { copy } from './copy'
 

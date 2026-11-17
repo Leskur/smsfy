@@ -25,8 +25,8 @@ function AppShell() {
   const select = useInboxStore((s) => s.select)
   const nav = useAppNavigate()
   useApplyTheme()
-  useSync()
   const { demoActive } = useDemoInbox()
+  useSync(!demoActive)
 
   const peerParam = threadMatch?.params.peer
     ? decodeURIComponent(threadMatch.params.peer)

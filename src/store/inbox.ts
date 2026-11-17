@@ -17,7 +17,8 @@ interface InboxState {
   setStatus: (patch: Partial<ConnectionStatus>) => void
   setError: (error?: string) => void
   setGotifyApps: (apps: Record<number, string>) => void
-  upsertMessages: (items: Message[]) => void
+  /** `live: true` = WS / SSE push — mark unread when thread is not open. */
+  upsertMessages: (items: Message[], opts?: { live?: boolean }) => void
   markRead: (threadId: string) => void
   clearBackend: (backend: 'gotify' | 'ntfy' | 'demo') => void
 }
@@ -94,8 +95,9 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     set((state) => ({ status: { ...state.status, ...patch } })),
   setGotifyApps: (gotifyApps) => set({ gotifyApps }),
 
-  upsertMessages: (items) =>
+  upsertMessages: (items, opts) =>
     set((state) => {
+      const live = opts?.live === true
       const messages = { ...state.messages }
       const threads = { ...state.threads }
       let changed = false
@@ -112,7 +114,11 @@ export const useInboxStore = create<InboxState>((set, get) => ({
           threads[item.threadId] = applyPreview(prev, item)
         }
 
-        if (item.direction === 'in' && state.selectedId !== item.threadId) {
+        if (
+          live &&
+          item.direction === 'in' &&
+          state.selectedId !== item.threadId
+        ) {
           const thread = threads[item.threadId]
           threads[item.threadId] = {
             ...thread,

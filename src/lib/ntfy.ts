@@ -15,10 +15,32 @@ export interface NtfyEvent {
 
 export { parseTopics }
 
+/** Optional access token → `Authorization: Bearer …` */
+export function ntfyAuthHeaders(
+  accessToken?: string,
+): Record<string, string> {
+  const token = accessToken?.trim()
+  if (!token) return {}
+  return { Authorization: `Bearer ${token}` }
+}
+
+/**
+ * EventSource cannot set headers; ntfy accepts `?auth=` as
+ * base64 of the Authorization header value (`Bearer …` / `Basic …`).
+ */
+export function withNtfyAuthQuery(url: string, accessToken?: string): string {
+  const token = accessToken?.trim()
+  if (!token) return url
+  const next = new URL(url)
+  next.searchParams.set('auth', btoa(`Bearer ${token}`))
+  return next.toString()
+}
+
 export async function fetchNtfyPoll(
   serverUrl: string,
   topics: string[],
   since: string | number = 0,
+  accessToken?: string,
 ): Promise<NtfyEvent[]> {
   if (topics.length === 0) return []
   const path = `/${topics.map(encodeURIComponent).join(',')}/json`
@@ -27,7 +49,10 @@ export async function fetchNtfyPoll(
   url.searchParams.set('since', String(since))
 
   const res = await proxiedFetch(url.toString(), {
-    headers: { Accept: 'application/x-ndjson, application/json' },
+    headers: {
+      Accept: 'application/x-ndjson, application/json',
+      ...ntfyAuthHeaders(accessToken),
+    },
   })
   if (!res.ok) {
     throw new Error(`ntfy poll failed (${res.status})`)
@@ -50,7 +75,9 @@ export async function fetchNtfyPoll(
   return events
 }
 
+/** Map ntfy message using the shared pipe: title=phone, message=body, topic=source. */
 export function ntfyEventToLocal(event: NtfyEvent): Message {
+  const topic = event.topic?.trim()
   return {
     id: `ntfy:${event.id}`,
     threadId: peerThreadId(event.title),
@@ -60,6 +87,7 @@ export function ntfyEventToLocal(event: NtfyEvent): Message {
     body: event.message ?? '',
     date: (event.time || 0) * 1000 || Date.now(),
     remoteId: event.id,
+    source: topic || undefined,
   }
 }
 
@@ -68,11 +96,12 @@ export function openNtfySse(
   topics: string[],
   onMessage: (event: NtfyEvent) => void,
   onStatus: (status: 'open' | 'error' | 'close') => void,
+  accessToken?: string,
 ): EventSource | null {
   if (topics.length === 0) return null
 
   const path = `/${topics.map(encodeURIComponent).join(',')}/sse`
-  const url = joinUrl(serverUrl, path)
+  const url = withNtfyAuthQuery(joinUrl(serverUrl, path), accessToken)
   const source = new EventSource(url)
 
   source.onopen = () => onStatus('open')

@@ -21,7 +21,7 @@ import { useSettingsStore } from '../store/settings'
 const GOTIFY_POLL_MS = 20_000
 const NTFY_POLL_MS = 20_000
 
-export function useSync() {
+export function useSync(enabled = true) {
   const gotify = useSettingsStore((s) => s.gotify)
   const ntfy = useSettingsStore((s) => s.ntfy)
   const upsertMessages = useInboxStore((s) => s.upsertMessages)
@@ -37,6 +37,17 @@ export function useSync() {
   const gotifyLiveRef = useRef(false)
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false)
+      setStatus({
+        gotify: 'idle',
+        gotifyError: undefined,
+        ntfy: 'idle',
+        ntfyError: undefined,
+      })
+      return
+    }
+
     let cancelled = false
     let ws: WebSocket | null = null
     gotifyLiveRef.current = false
@@ -135,7 +146,7 @@ export function useSync() {
         gotify.baseUrl.trim(),
         gotify.clientToken.trim(),
         (msg) => {
-          upsertMessages([gotifyMessageToLocal(msg)])
+          upsertMessages([gotifyMessageToLocal(msg)], { live: true })
         },
         (status) => {
           if (cancelled) return
@@ -174,6 +185,7 @@ export function useSync() {
       if (ws) ws.close()
     }
   }, [
+    enabled,
     gotify.enabled,
     gotify.baseUrl,
     gotify.clientToken,
@@ -186,8 +198,8 @@ export function useSync() {
   ])
 
   useEffect(() => {
-    if (!NTFY_ENABLED) {
-      clearBackend('ntfy')
+    if (!enabled || !NTFY_ENABLED) {
+      if (!NTFY_ENABLED) clearBackend('ntfy')
       setStatus({ ntfy: 'idle', ntfyError: undefined })
       return
     }
@@ -218,6 +230,7 @@ export function useSync() {
           server,
           topics,
           ntfySinceRef.current || 0,
+          ntfy.accessToken,
         )
         if (cancelled) return
         if (events.length) {
@@ -272,7 +285,7 @@ export function useSync() {
           if (event.time && event.time > ntfySinceRef.current) {
             ntfySinceRef.current = event.time
           }
-          upsertMessages([ntfyEventToLocal(event)])
+          upsertMessages([ntfyEventToLocal(event)], { live: true })
         },
         (status) => {
           if (cancelled) return
@@ -289,6 +302,7 @@ export function useSync() {
             startNtfyPoll()
           }
         },
+        ntfy.accessToken,
       )
 
       if (!source) {
@@ -304,9 +318,11 @@ export function useSync() {
       if (source) source.close()
     }
   }, [
+    enabled,
     ntfy.enabled,
     ntfy.serverUrl,
     ntfy.topics,
+    ntfy.accessToken,
     upsertMessages,
     setStatus,
     setError,

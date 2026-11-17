@@ -30,6 +30,7 @@ function normalizeNtfy(next: NtfySettings): NtfySettings {
     ...next,
     serverUrl: next.serverUrl.trim().replace(/\/+$/, ''),
     topics: next.topics.trim(),
+    accessToken: next.accessToken.trim(),
   }
 }
 
@@ -77,7 +78,8 @@ export function SettingsScreen({ open, onBack }: Props) {
 
   const [draftGotify, setDraftGotify] = useState<GotifySettings>(gotify)
   const [draftNtfy, setDraftNtfy] = useState<NtfySettings>(ntfy)
-  const [showToken, setShowToken] = useState(false)
+  const [showGotifyToken, setShowGotifyToken] = useState(false)
+  const [showNtfyToken, setShowNtfyToken] = useState(false)
   const draftGotifyRef = useRef(draftGotify)
   const draftNtfyRef = useRef(draftNtfy)
   draftGotifyRef.current = draftGotify
@@ -89,7 +91,8 @@ export function SettingsScreen({ open, onBack }: Props) {
     if (open) {
       setDraftGotify(gotify)
       setDraftNtfy(ntfy)
-      setShowToken(false)
+      setShowGotifyToken(false)
+      setShowNtfyToken(false)
     }
   }, [open, gotify, ntfy])
 
@@ -187,6 +190,11 @@ export function SettingsScreen({ open, onBack }: Props) {
               </div>
             </section>
 
+            <section className="settings-group" aria-label={copy.pipeLegend}>
+              <h2 className="settings-group-title">{copy.pipeLegend}</h2>
+              <p className="settings-footer-hint">{copy.pipeHint}</p>
+            </section>
+
             <section className="settings-group" aria-label={copy.gotifyLegend}>
               <h2 className="settings-group-title">{copy.gotifyLegend}</h2>
               <div className="settings-group-card">
@@ -220,9 +228,9 @@ export function SettingsScreen({ open, onBack }: Props) {
                   <span className="settings-row-label">{copy.gotifyToken}</span>
                   <div className="settings-input-wrap">
                     <input
-                      type={showToken ? 'text' : 'password'}
+                      type={showGotifyToken ? 'text' : 'password'}
                       className="settings-input"
-                      placeholder="Clients → token"
+                      placeholder="Client token"
                       value={draftGotify.clientToken}
                       onChange={(e) =>
                         setDraftGotify((s) => ({
@@ -239,14 +247,16 @@ export function SettingsScreen({ open, onBack }: Props) {
                       type="button"
                       className="settings-input-reveal"
                       aria-label={
-                        showToken ? copy.gotifyTokenHide : copy.gotifyTokenShow
+                        showGotifyToken
+                          ? copy.gotifyTokenHide
+                          : copy.gotifyTokenShow
                       }
-                      aria-pressed={showToken}
+                      aria-pressed={showGotifyToken}
                       tabIndex={tab}
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => setShowToken((v) => !v)}
+                      onClick={() => setShowGotifyToken((v) => !v)}
                     >
-                      {showToken ? (
+                      {showGotifyToken ? (
                         <EyeOff size={18} strokeWidth={2} aria-hidden />
                       ) : (
                         <Eye size={18} strokeWidth={2} aria-hidden />
@@ -267,10 +277,7 @@ export function SettingsScreen({ open, onBack }: Props) {
               className={`settings-group${NTFY_ENABLED ? '' : ' is-disabled'}`}
               aria-label={copy.ntfyLegend}
             >
-              <h2 className="settings-group-title">
-                {copy.ntfyLegend}
-                {!NTFY_ENABLED ? `（${copy.ntfyComingSoon}）` : null}
-              </h2>
+              <h2 className="settings-group-title">{copy.ntfyLegend}</h2>
               <div
                 className="settings-group-card"
                 inert={NTFY_ENABLED ? undefined : true}
@@ -322,6 +329,50 @@ export function SettingsScreen({ open, onBack }: Props) {
                     disabled={!NTFY_ENABLED}
                   />
                 </label>
+                <div className="settings-row settings-row-field">
+                  <span className="settings-row-label">{copy.ntfyToken}</span>
+                  <div className="settings-input-wrap">
+                    <input
+                      type={showNtfyToken ? 'text' : 'password'}
+                      className="settings-input"
+                      placeholder="Access token（可选）"
+                      value={draftNtfy.accessToken ?? ''}
+                      onChange={(e) =>
+                        setDraftNtfy((s) => ({
+                          ...s,
+                          accessToken: e.target.value,
+                        }))
+                      }
+                      onBlur={() => {
+                        if (NTFY_ENABLED) commitNtfy(draftNtfyRef.current)
+                      }}
+                      autoComplete="off"
+                      spellCheck={false}
+                      tabIndex={NTFY_ENABLED ? tab : -1}
+                      disabled={!NTFY_ENABLED}
+                    />
+                    <button
+                      type="button"
+                      className="settings-input-reveal"
+                      aria-label={
+                        showNtfyToken
+                          ? copy.ntfyTokenHide
+                          : copy.ntfyTokenShow
+                      }
+                      aria-pressed={showNtfyToken}
+                      tabIndex={NTFY_ENABLED ? tab : -1}
+                      disabled={!NTFY_ENABLED}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => setShowNtfyToken((v) => !v)}
+                    >
+                      {showNtfyToken ? (
+                        <EyeOff size={18} strokeWidth={2} aria-hidden />
+                      ) : (
+                        <Eye size={18} strokeWidth={2} aria-hidden />
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
               {NTFY_ENABLED && draftNtfy.enabled ? (
                 <p className="settings-footer-hint pipe-status">

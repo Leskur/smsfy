@@ -18,6 +18,7 @@ const defaultNtfy: NtfySettings = {
   enabled: false,
   serverUrl: 'https://ntfy.sh',
   topics: '',
+  accessToken: '',
 }
 
 function normalizeTheme(value: unknown): ThemePreference {

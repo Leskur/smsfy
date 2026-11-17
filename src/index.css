@@ -17,6 +17,7 @@
   --danger: #b42318;
   --danger-soft: #fdf4f3;
   --danger-line: #f0c2bd;
+  --unread: #ff3b30;
   --control: #f0f1f3;
   --control-hover: #ebebeb;
   --nav-btn-bg: #ffffff;
@@ -57,6 +58,7 @@
   --danger: #f97066;
   --danger-soft: color-mix(in srgb, var(--danger) 16%, #1a1a1a);
   --danger-line: color-mix(in srgb, var(--danger) 35%, #1a1a1a);
+  --unread: #ff453a;
   --control: #242424;
   --control-hover: #2e2e2e;
   --nav-btn-bg: rgba(120, 120, 128, 0.36);
@@ -458,6 +460,13 @@ button {
   }
 }
 
+.avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+}
+
 .avatar {
   width: 44px;
   height: 44px;
@@ -468,6 +477,18 @@ button {
   overflow: hidden;
   background: var(--avatar-bg);
   color: var(--avatar-fg);
+}
+
+.unread-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--unread);
+  box-shadow: 0 0 0 2px var(--surface);
+  pointer-events: none;
 }
 
 .avatar-default {
@@ -579,16 +600,22 @@ button {
   text-align: center;
 }
 
-.thread-stamp-source {
-  font-weight: 500;
-}
-
 .bubble-row {
   display: flex;
 }
 
 .bubble-row.in {
   justify-content: flex-start;
+}
+
+.thread-stamp-source {
+  display: inline-block;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  font-weight: 500;
 }
 
 .bubble {

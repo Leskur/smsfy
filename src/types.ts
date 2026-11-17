@@ -11,6 +11,8 @@ export interface NtfySettings {
   serverUrl: string
   /** Comma or newline separated topic names — SMS gateway pipe(s) */
   topics: string
+  /** Optional access token for protected topics (`Authorization: Bearer`) */
+  accessToken: string
 }
 
 export type ThemePreference = 'system' | 'light' | 'dark'
@@ -48,6 +50,8 @@ export interface Message {
   remoteId?: string | number
   /** Gotify application id (`appid`) for source label lookup */
   appId?: number
+  /** Pipe source label (e.g. ntfy topic); shown after the timestamp */
+  source?: string
 }
 
 export interface ConnectionStatus {

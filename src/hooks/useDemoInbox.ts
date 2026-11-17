@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { buildDemoMessages, readDemoQuery } from '../lib/demo'
+import { fetchDemoMessages, readDemoQuery } from '../lib/demo'
 import { useInboxStore } from '../store/inbox'
 
 /** Demo inbox only when URL has `?demo=1` (or true/yes/on). */
@@ -13,16 +13,29 @@ export function useDemoInbox() {
   const active = readDemoQuery(`?${params.toString()}`) === true
 
   useEffect(() => {
-    if (active) {
-      if (!loadedRef.current) {
-        upsertMessages(buildDemoMessages())
-        loadedRef.current = true
+    if (!active) {
+      if (loadedRef.current) {
+        clearBackend('demo')
+        loadedRef.current = false
       }
       return
     }
-    if (loadedRef.current) {
-      clearBackend('demo')
-      loadedRef.current = false
+
+    if (loadedRef.current) return
+
+    let cancelled = false
+    void fetchDemoMessages()
+      .then((messages) => {
+        if (cancelled) return
+        upsertMessages(messages)
+        loadedRef.current = true
+      })
+      .catch(() => {
+        /* demo is optional UI preview — ignore load failures */
+      })
+
+    return () => {
+      cancelled = true
     }
   }, [active, upsertMessages, clearBackend])
 

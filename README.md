@@ -1,6 +1,6 @@
 # Smsfy
 
-类 Google Messages 的**只读**网页短信收件箱：手机短信经 **Gotify** 转发后，按对方号码聚合为会话（不可回复）。设置里可见 ntfy，当前标注开发中、暂不可用。
+类 Google Messages 的**只读**网页短信收件箱：手机短信经 **Gotify** / **ntfy** 转发后，按对方号码聚合为会话（不可回复）。
 
 ## 运行
 
@@ -9,26 +9,32 @@ npm install
 npm run dev
 ```
 
-打开 [http://localhost:5173](http://localhost:5173)。预览 UI 加 `?demo=1`。
+打开 [http://localhost:5173](http://localhost:5173)。预览 UI 加 `?demo=1`（会按需请求 `/demo-messages.json`，不进主包）。
 
 ## 设置
 
 1. 点击齿轮打开**设置**
-2. 启用 Gotify 和/或 ntfy 信息源（服务器 + 客户端令牌 / 主题）
-3. 转发约定：`title` = 对方手机号，`message` = 短信正文
-4. 会话按号码分组（不是按应用名 / 主题名）
+2. 启用 Gotify 和/或 ntfy 信息源（Gotify：服务器 + 客户端令牌；ntfy：服务器 + 主题，受保护主题可填访问令牌）
+3. 按下方统一约定转发短信
 
 设置保存在 `localStorage`（键名仍为 `sms-web-settings`，保持兼容）。
+
+## 转发约定（Gotify / ntfy 统一）
+
+| 字段 | 含义 |
+|------|------|
+| `title` | 对方手机号（会话按此分组） |
+| `message` | 短信正文 |
+| Gotify 应用名 / ntfy 主题 | 显示在时间后作为来源，不作会话名 |
 
 ## 会话键
 
 - `peer:<normalized-phone>` — 例如 title `+1 (555) 010-1234` → `peer:+15550101234`
 - 空 title → `peer:unknown`
-- Gotify 应用 / ntfy 主题仅作传输管道
 
 ## 网络
 
-浏览器直连 Gotify / ntfy（需服务端 CORS；Gotify WS 需放行页面 Origin）。  
+浏览器直连 Gotify / ntfy（需服务端 CORS；Gotify WS 需放行页面 Origin；自建 ntfy 也需允许页面 Origin）。  
 连接失败时 Gotify / ntfy 会回退 20s HTTP 轮询；ntfy 优先 SSE。
 
 ## 添加到桌面（PWA）

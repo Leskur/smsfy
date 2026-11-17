@@ -135,7 +135,12 @@ export function MessageList({
                     className={`message-item${selectedId === thread.id ? ' active' : ''}`}
                     onClick={() => nav.toThread(thread.peerKey)}
                   >
-                    <ContactAvatar />
+                    <span className="avatar-wrap">
+                      <ContactAvatar />
+                      {thread.unread > 0 ? (
+                        <span className="unread-dot" aria-label={copy.unreadAria} />
+                      ) : null}
+                    </span>
                     <div className="message-meta">
                       <div className="message-top">
                         <span className="message-title">{thread.peer}</span>

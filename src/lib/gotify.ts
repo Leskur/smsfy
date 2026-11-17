@@ -83,6 +83,7 @@ export async function fetchGotifyMessages(
   return all
 }
 
+/** Map Gotify message using the shared pipe: title=phone, message=body. */
 export function gotifyMessageToLocal(
   msg: GotifyMessage,
   direction: Message['direction'] = 'in',

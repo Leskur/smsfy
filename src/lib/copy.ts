@@ -14,6 +14,7 @@ export const copy = {
   actionOpenLink: '打开链接',
   toastCopied: '已复制',
   scrollTopAria: '回到顶部',
+  unreadAria: '未读',
 
   emptyListTitle: '暂无信息',
   emptyListHint: '请先在设置中连接信息源。信息会按对方手机号分组显示。',
@@ -32,6 +33,10 @@ export const copy = {
   themeDark: '深色',
   themeAria: '外观模式',
 
+  pipeLegend: '转发约定',
+  pipeHint:
+    'Gotify / ntfy 统一：title = 对方手机号，message = 短信正文。Gotify 应用名与 ntfy 主题显示在时间后作为来源，不作会话名。',
+
   gotifyLegend: 'Gotify',
   gotifyEnable: '启用 Gotify',
   gotifyServer: '服务器地址',
@@ -43,7 +48,9 @@ export const copy = {
   ntfyEnable: '启用 ntfy',
   ntfyServer: '服务器',
   ntfyTopic: '主题',
-  ntfyComingSoon: '开发中',
+  ntfyToken: '访问令牌',
+  ntfyTokenShow: '显示令牌',
+  ntfyTokenHide: '隐藏令牌',
 
   statusLabel: '状态',
   statusIdle: '空闲',

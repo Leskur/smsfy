@@ -85,8 +85,7 @@ export function MessageThread({ onBack }: Props) {
           messages.map((msg, i) => {
             const prev = messages[i - 1]
             const showStamp = shouldShowStamp(msg.date, prev?.date)
-            const sourceChanged =
-              Boolean(msg.appId) && msg.appId !== prev?.appId
+            const sourceChanged = messageSourceKey(msg) !== messageSourceKey(prev)
             return (
               <BubbleBlock
                 key={msg.id}
@@ -301,6 +300,13 @@ function MessageBody({ body }: { body: string }) {
   )
 }
 
+function messageSourceKey(message: Message | undefined): string {
+  if (!message) return ''
+  if (message.source) return `source:${message.source}`
+  if (message.appId != null) return `app:${message.appId}`
+  return ''
+}
+
 function BubbleBlock({
   message,
   showStamp,
@@ -311,10 +317,10 @@ function BubbleBlock({
   showSource: boolean
 }) {
   const gotifyApps = useInboxStore((s) => s.gotifyApps)
-  const sourceLabel =
-    showSource && message.appId != null
-      ? gotifyApps[message.appId]
-      : undefined
+  const sourceLabel = showSource
+    ? message.source ||
+      (message.appId != null ? gotifyApps[message.appId] : undefined)
+    : undefined
 
   return (
     <div className="bubble-block">
@@ -326,7 +332,9 @@ function BubbleBlock({
           {showStamp ? formatColorOsStamp(message.date) : null}
           {showStamp && sourceLabel ? ' ' : null}
           {sourceLabel ? (
-            <span className="thread-stamp-source">{sourceLabel}</span>
+            <span className="thread-stamp-source" title={sourceLabel}>
+              {sourceLabel}
+            </span>
           ) : null}
         </time>
       ) : null}
