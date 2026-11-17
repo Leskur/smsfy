@@ -447,19 +447,24 @@ button {
 }
 
 .demo-note {
-  margin: 0.28rem 0 0;
+  margin: 0;
+  flex-shrink: 0;
   font-size: 0.72rem;
-  line-height: 1.2;
+  line-height: 1.15;
   font-weight: 500;
   color: var(--ink-muted);
 }
 
 .inbox-heading {
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
 }
 
 .inbox-title {
   margin: 0;
+  min-width: 0;
   font-size: 1.2rem;
   font-weight: 700;
   line-height: 1.15;
@@ -557,6 +562,12 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+.message-list.is-selecting .message-item {
+  grid-template-columns: 1.35rem 44px 1fr;
+  gap: 0.65rem;
+  padding-left: 0.85rem;
+}
+
 .message-item:active {
   background: transparent;
 }
@@ -574,14 +585,7 @@ button {
   place-items: center;
   flex-shrink: 0;
   color: var(--on-accent);
-  background: var(--surface);
-  box-shadow: 0 0 0 2px var(--surface);
-}
-
-.avatar-wrap .select-check {
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
+  background: transparent;
 }
 
 .select-check.on {

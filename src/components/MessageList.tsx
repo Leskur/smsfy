@@ -216,7 +216,9 @@ export function MessageList({
           <>
             <div className="inbox-heading">
               <h1 className="inbox-title">{copy.inboxTitle}</h1>
-              {demoActive ? <p className="demo-note">{copy.demoBanner}</p> : null}
+              {demoActive ? (
+                <span className="demo-note">{copy.demoBanner}</span>
+              ) : null}
             </div>
             <button
               ref={moreBtnRef}
@@ -533,16 +535,17 @@ function MessageRow({
       onPointerCancel={clearPress}
       onPointerLeave={clearPress}
     >
+      {selecting ? (
+        <span
+          className={`select-check${checked ? ' on' : ''}`}
+          aria-hidden
+        >
+          {checked ? <Check size={14} strokeWidth={2.5} /> : null}
+        </span>
+      ) : null}
       <span className="avatar-wrap">
         <ContactAvatar />
-        {selecting ? (
-          <span
-            className={`select-check${checked ? ' on' : ''}`}
-            aria-hidden
-          >
-            {checked ? <Check size={14} strokeWidth={2.5} /> : null}
-          </span>
-        ) : thread.unread > 0 ? (
+        {!selecting && thread.unread > 0 ? (
           <span className="unread-dot" aria-label={copy.unreadAria} />
         ) : null}
       </span>
