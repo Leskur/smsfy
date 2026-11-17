@@ -9,9 +9,11 @@ const outDir = path.join(root, 'public')
 
 await mkdir(outDir, { recursive: true })
 
+const lightBg = { r: 243, g: 247, b: 252, alpha: 1 }
+
 async function writePng(size, fileName) {
   await sharp(src)
-    .resize(size, size, { fit: 'contain', background: { r: 26, g: 36, b: 51, alpha: 1 } })
+    .resize(size, size, { fit: 'contain', background: lightBg })
     .png()
     .toFile(path.join(outDir, fileName))
 }
@@ -22,7 +24,7 @@ async function writeMaskable(size, fileName) {
   const icon = await sharp(src)
     .resize(inner, inner, {
       fit: 'contain',
-      background: { r: 26, g: 36, b: 51, alpha: 1 },
+      background: lightBg,
     })
     .png()
     .toBuffer()
@@ -32,7 +34,7 @@ async function writeMaskable(size, fileName) {
       width: size,
       height: size,
       channels: 4,
-      background: { r: 26, g: 36, b: 51, alpha: 1 },
+      background: lightBg,
     },
   })
     .composite([{ input: icon, left: pad, top: pad }])
