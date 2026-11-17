@@ -37,6 +37,19 @@ import type { Message } from '../types'
 const LONG_PRESS_MS = 480
 const LONG_PRESS_MOVE_PX = 10
 
+function selectElementText(el: HTMLElement) {
+  const selection = window.getSelection()
+  if (!selection) return
+  const range = document.createRange()
+  range.selectNodeContents(el)
+  selection.removeAllRanges()
+  selection.addRange(range)
+}
+
+function clearDocSelection() {
+  window.getSelection()?.removeAllRanges()
+}
+
 type ActionKind = 'otp' | 'url'
 
 interface ActionTarget {
@@ -340,16 +353,22 @@ export function MessageThread({ onBack }: Props) {
       {menu ? (
         <BubbleContextMenu
           target={menu}
-          onClose={() => setMenu(null)}
+          onClose={() => {
+            clearDocSelection()
+            setMenu(null)
+          }}
           onCopy={async () => {
             const ok = await copyText(menu.body)
             if (ok) toast(copy.toastCopied)
+            clearDocSelection()
             setMenu(null)
           }}
           onDelete={() => {
+            clearDocSelection()
             void deleteMessageIds([menu.messageId])
           }}
           onSelect={() => {
+            clearDocSelection()
             enterSelect(new Set([menu.messageId]))
             setMenu(null)
           }}
@@ -763,8 +782,10 @@ function BubbleBlock({
     ? message.source ||
       (message.appId != null ? gotifyApps[message.appId] : undefined)
     : undefined
+  const bubbleRef = useRef<HTMLDivElement>(null)
   const pressTimer = useRef<number | null>(null)
   const origin = useRef<{ x: number; y: number } | null>(null)
+  const longPressedRef = useRef(false)
 
   function clearPress() {
     if (pressTimer.current != null) {
@@ -779,12 +800,17 @@ function BubbleBlock({
     if (event.pointerType === 'mouse') return
     if (selecting) return
     clearPress()
+    longPressedRef.current = false
     origin.current = { x: event.clientX, y: event.clientY }
     const x = event.clientX
     const y = event.clientY
     pressTimer.current = window.setTimeout(() => {
       pressTimer.current = null
       origin.current = null
+      const el = bubbleRef.current
+      if (!el) return
+      longPressedRef.current = true
+      selectElementText(el)
       onLongPress(x, y)
     }, LONG_PRESS_MS)
   }
@@ -795,6 +821,15 @@ function BubbleBlock({
     const dy = event.clientY - origin.current.y
     if (dx * dx + dy * dy > LONG_PRESS_MOVE_PX * LONG_PRESS_MOVE_PX) {
       clearPress()
+    }
+  }
+
+  function onPointerUp() {
+    clearPress()
+    // Finger-up often clears the selection; re-apply after long-press.
+    if (longPressedRef.current && bubbleRef.current) {
+      selectElementText(bubbleRef.current)
+      longPressedRef.current = false
     }
   }
 
@@ -824,6 +859,7 @@ function BubbleBlock({
           </span>
         ) : null}
         <div
+          ref={bubbleRef}
           className={`bubble in${selecting ? ' is-selectable' : ''}`}
           onClick={selecting ? onSelectToggle : undefined}
           onContextMenu={(event) => {
@@ -838,7 +874,7 @@ function BubbleBlock({
           }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
-          onPointerUp={clearPress}
+          onPointerUp={onPointerUp}
           onPointerCancel={clearPress}
           onPointerLeave={clearPress}
         >

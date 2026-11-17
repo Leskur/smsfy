@@ -812,6 +812,8 @@ button {
   background: var(--bubble-in);
   color: var(--ink);
   border: 0;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .bubble-body {
@@ -820,6 +822,8 @@ button {
   word-break: break-word;
   line-height: 1.45;
   font-size: 0.95rem;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* List preview: block-level text-indent is enough. */
@@ -1285,8 +1289,33 @@ button {
 }
 
 @media (max-width: 800px) {
+  body {
+    background: var(--surface);
+  }
+
   .app-shell {
     grid-template-columns: 1fr;
+    background: var(--surface);
+  }
+
+  .inbox-pane,
+  .thread-wrap,
+  .thread-scroll,
+  .thread-empty,
+  .thread-header,
+  .settings-screen,
+  .settings-panel,
+  .settings-header {
+    background: var(--surface);
+  }
+
+  /* Keep bubbles / setting cards readable on the flat surface. */
+  .bubble {
+    background: var(--control);
+  }
+
+  .settings-group-card {
+    background: var(--control);
   }
 
   .inbox-pane {
