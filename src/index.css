@@ -403,7 +403,6 @@ button {
   min-height: 0;
   overflow: hidden;
   background: var(--surface);
-  border-right: 1px solid var(--line);
 }
 
 .inbox-header,
@@ -1319,7 +1318,6 @@ button {
   }
 
   .inbox-pane {
-    border-right: 0;
     height: 100%;
   }
 

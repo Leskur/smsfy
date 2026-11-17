@@ -13,15 +13,33 @@ export function resolveEffectiveTheme(
     : 'light'
 }
 
-/** List / settings surface — keep PWA chrome in sync with these. */
-const THEME_COLORS: Record<EffectiveTheme, string> = {
+/** Mobile / single-pane chrome — matches list & settings `--surface`. */
+const SURFACE_COLORS: Record<EffectiveTheme, string> = {
   light: '#ffffff',
   dark: '#1a1a1a',
 }
 
-/** Keep OS chrome (status / title bar) aligned with the list background. */
+/**
+ * Desktop split chrome — use app `--bg`, which differs from both list
+ * `--surface` and thread `--bg-thread`. `theme-color` is a flat fill only
+ * (no border API on the OS title bar).
+ */
+const DESKTOP_CHROME_COLORS: Record<EffectiveTheme, string> = {
+  light: '#f3f7fc',
+  dark: '#111111',
+}
+
+const SPLIT_VIEW_MQ = '(min-width: 801px)'
+
+function isDesktopSplitView(): boolean {
+  return window.matchMedia(SPLIT_VIEW_MQ).matches
+}
+
+/** Keep OS chrome (status / title bar) aligned with the visible page surface. */
 function syncChromeTheme(effective: EffectiveTheme) {
-  const color = THEME_COLORS[effective]
+  const color = isDesktopSplitView()
+    ? DESKTOP_CHROME_COLORS[effective]
+    : SURFACE_COLORS[effective]
 
   // Drop media-bound tags so OS prefers-color-scheme cannot override in-app theme.
   document
@@ -43,6 +61,10 @@ function syncChromeTheme(effective: EffectiveTheme) {
   }
   // iOS: light page → default; dark page → black status bar.
   apple.setAttribute('content', effective === 'dark' ? 'black' : 'default')
+}
+
+export function desktopSplitMediaQuery(): string {
+  return SPLIT_VIEW_MQ
 }
 
 export function applyTheme(preference: ThemePreference): EffectiveTheme {
