@@ -154,14 +154,12 @@ export function MessageList({
 
     const closingOpen = Boolean(selectedId && ids.includes(selectedId))
     setBusy(true)
-    let failed = 0
     try {
+      let removed = 0
       for (const id of ids) {
-        const result = await deleteConversation(id)
-        if (!result) continue
-        failed += result.gotifyFailed + result.ntfyFailed
+        if (deleteConversation(id)) removed += 1
       }
-      toast(failed > 0 ? copy.deleteThreadPartial : copy.deleteThreadDone)
+      if (removed > 0) toast(copy.deleteThreadDone)
       exitSelect()
       setMenu(null)
       if (closingOpen) nav.toHome()

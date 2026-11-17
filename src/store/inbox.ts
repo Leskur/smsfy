@@ -1,9 +1,6 @@
 import { create } from 'zustand'
 import { copy } from '../lib/copy'
-import {
-  deleteMessagesUpstream,
-  type DeleteUpstreamResult,
-} from '../lib/deleteConversation'
+import { deleteMessagesUpstream } from '../lib/deleteConversation'
 import { normalizePeer } from '../lib/ids'
 import {
   deleteMirroredMessages,
@@ -50,10 +47,10 @@ interface InboxState {
   applyNtfyDelete: (sequenceId: string) => void
   markRead: (threadId: string) => void
   clearBackend: (backend: 'gotify' | 'ntfy' | 'demo') => void
-  /** Hide peer locally, clear thread, best-effort upstream delete. */
-  deleteConversation: (threadId: string) => Promise<DeleteUpstreamResult | null>
-  /** Hide messages locally + best-effort upstream delete. */
-  deleteMessages: (ids: string[]) => Promise<DeleteUpstreamResult | null>
+  /** Hide peer locally, clear thread; upstream delete is best-effort / async. */
+  deleteConversation: (threadId: string) => boolean
+  /** Hide messages locally; upstream delete is best-effort / async. */
+  deleteMessages: (ids: string[]) => boolean
   hydrateFromOffline: () => Promise<void>
 }
 
@@ -317,10 +314,10 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     })
   },
 
-  deleteConversation: async (threadId) => {
+  deleteConversation: (threadId) => {
     const state = get()
     const thread = state.threads[threadId]
-    if (!thread) return null
+    if (!thread) return false
 
     const doomed = Object.values(state.messages).filter(
       (msg) => msg.threadId === threadId,
@@ -347,18 +344,19 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     )
 
     const { gotify, ntfy } = useSettingsStore.getState()
-    return deleteMessagesUpstream(doomed, { gotify, ntfy })
+    mirrorQuietly(deleteMessagesUpstream(doomed, { gotify, ntfy }).then(() => {}))
+    return true
   },
 
-  deleteMessages: async (ids) => {
+  deleteMessages: (ids) => {
     const unique = [...new Set(ids)].filter(Boolean)
-    if (unique.length === 0) return null
+    if (unique.length === 0) return false
 
     const state = get()
     const doomed = unique
       .map((id) => state.messages[id])
       .filter((msg): msg is Message => Boolean(msg))
-    if (doomed.length === 0) return null
+    if (doomed.length === 0) return false
 
     const hiddenAt = Date.now()
     const doomedIds = doomed.map((msg) => msg.id)
@@ -371,7 +369,8 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     mirrorQuietly(putHiddenMessages(doomedIds, hiddenAt))
 
     const { gotify, ntfy } = useSettingsStore.getState()
-    return deleteMessagesUpstream(doomed, { gotify, ntfy })
+    mirrorQuietly(deleteMessagesUpstream(doomed, { gotify, ntfy }).then(() => {}))
+    return true
   },
 
   hydrateFromOffline: async () => {

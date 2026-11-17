@@ -155,10 +155,8 @@ export function MessageThread({ onBack }: Props) {
     if (!ok) return
     setDeleting(true)
     try {
-      const result = await deleteConversation(selectedId)
-      if (!result) return
-      const failed = result.gotifyFailed + result.ntfyFailed
-      toast(failed > 0 ? copy.deleteThreadPartial : copy.deleteThreadDone)
+      if (!deleteConversation(selectedId)) return
+      toast(copy.deleteThreadDone)
       onBack()
     } finally {
       setDeleting(false)
@@ -176,10 +174,8 @@ export function MessageThread({ onBack }: Props) {
     if (!ok) return
     setDeleting(true)
     try {
-      const result = await deleteMessages(ids)
-      if (!result) return
-      const failed = result.gotifyFailed + result.ntfyFailed
-      toast(failed > 0 ? copy.deleteThreadPartial : copy.deleteThreadDone)
+      if (!deleteMessages(ids)) return
+      toast(copy.deleteThreadDone)
       exitSelect()
       setMenu(null)
     } finally {
