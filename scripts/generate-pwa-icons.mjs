@@ -9,7 +9,7 @@ const outDir = path.join(root, 'public')
 
 await mkdir(outDir, { recursive: true })
 
-const lightBg = { r: 243, g: 247, b: 252, alpha: 1 }
+const lightBg = { r: 255, g: 255, b: 255, alpha: 1 }
 
 async function writePng(size, fileName) {
   await sharp(src)

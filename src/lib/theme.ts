@@ -13,22 +13,22 @@ export function resolveEffectiveTheme(
     : 'light'
 }
 
-/** Fallback if `--bg` is not readable yet (matches `index.css`). */
+/** Fallback if `--surface` is not readable yet (matches list / settings). */
 const THEME_COLORS: Record<EffectiveTheme, string> = {
-  light: '#f3f7fc',
-  dark: '#111111',
+  light: '#ffffff',
+  dark: '#1a1a1a',
 }
 
-function readPageBackground(effective: EffectiveTheme): string {
+function readListBackground(effective: EffectiveTheme): string {
   const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue('--bg')
+    .getPropertyValue('--surface')
     .trim()
   return raw || THEME_COLORS[effective]
 }
 
-/** Keep OS chrome (status / title bar) aligned with the page background. */
+/** Keep OS chrome (status / title bar) aligned with the list background. */
 function syncChromeTheme(effective: EffectiveTheme) {
-  const color = readPageBackground(effective)
+  const color = readListBackground(effective)
 
   let meta = document.querySelector('meta[name="theme-color"]')
   if (!meta) {
