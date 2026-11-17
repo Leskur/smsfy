@@ -1,3 +1,4 @@
+import { syncHttpError } from './copy'
 import { displayPeer, parseTopics, peerThreadId } from './ids'
 import { joinUrl, proxiedFetch } from './proxy'
 import type { Message } from '../types'
@@ -63,7 +64,7 @@ export async function fetchNtfyPoll(
     },
   })
   if (!res.ok) {
-    throw new Error(`ntfy poll failed (${res.status})`)
+    throw new Error(syncHttpError('ntfy', res.status))
   }
 
   const text = await res.text()
@@ -100,7 +101,7 @@ export async function deleteNtfyMessage(
     },
   })
   if (!res.ok && res.status !== 404) {
-    throw new Error(`ntfy delete failed (${res.status})`)
+    throw new Error(syncHttpError('ntfy', res.status))
   }
 }
 

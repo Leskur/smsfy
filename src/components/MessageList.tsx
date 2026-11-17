@@ -102,10 +102,25 @@ export function MessageList({
     })
   }, [threads, selecting])
 
-  const hardError =
-    (status.gotify === 'error' && status.gotifyError) ||
-    (status.ntfy === 'error' && status.ntfyError) ||
-    undefined
+  const syncErrors = useMemo(() => {
+    const items: { id: 'gotify' | 'ntfy'; title: string; detail: string }[] =
+      []
+    if (status.gotify === 'error' && status.gotifyError) {
+      items.push({
+        id: 'gotify',
+        title: copy.gotifySyncErrorTitle,
+        detail: status.gotifyError,
+      })
+    }
+    if (status.ntfy === 'error' && status.ntfyError) {
+      items.push({
+        id: 'ntfy',
+        title: copy.ntfySyncErrorTitle,
+        detail: status.ntfyError,
+      })
+    }
+    return items
+  }, [status.gotify, status.gotifyError, status.ntfy, status.ntfyError])
 
   const hasAny = Object.keys(threads).length > 0
   const configured = settingsConfigured({ gotify, ntfy })
@@ -244,9 +259,23 @@ export function MessageList({
         )}
       </header>
 
-      {hardError && !demoActive ? (
+      {!demoActive && syncErrors.length > 0 ? (
         <div className="status-alerts" role="status">
-          <p className="status-alert danger">{hardError}</p>
+          {syncErrors.map((err) => (
+            <div key={err.id} className="status-alert danger">
+              <div className="status-alert-copy">
+                <p className="status-alert-title">{err.title}</p>
+                <p className="status-alert-detail">{err.detail}</p>
+              </div>
+              <button
+                type="button"
+                className="status-alert-action"
+                onClick={() => onOpenSettings()}
+              >
+                {copy.syncErrorOpenSettings}
+              </button>
+            </div>
+          ))}
         </div>
       ) : null}
 

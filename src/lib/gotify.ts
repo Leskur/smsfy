@@ -1,4 +1,4 @@
-import { copy } from './copy'
+import { copy, syncHttpError } from './copy'
 import { displayPeer, peerThreadId } from './ids'
 import { joinUrl, proxiedFetch, toWebSocketUrl } from './proxy'
 import type { Message } from '../types'
@@ -28,6 +28,29 @@ export const GOTIFY_WS_FALLBACK_HINT = copy.gotifyWsFallback
 const GOTIFY_PAGE_LIMIT = 100
 const GOTIFY_MAX_PAGES = 10
 
+interface GotifyErrorBody {
+  error?: string
+  errorCode?: number
+  errorDescription?: string
+}
+
+/** Prefer Gotify’s errorDescription; fall back to localized status copy. */
+async function throwGotifyHttpError(res: Response): Promise<never> {
+  let description = ''
+  try {
+    const body = (await res.json()) as GotifyErrorBody
+    description =
+      body.errorDescription?.trim() || body.error?.trim() || ''
+  } catch {
+    /* ignore non-JSON error bodies */
+  }
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(copy.gotifyUnauthorized)
+  }
+  if (description) throw new Error(description)
+  throw new Error(syncHttpError('gotify', res.status))
+}
+
 export async function fetchGotifyApplications(
   baseUrl: string,
   clientToken: string,
@@ -35,9 +58,7 @@ export async function fetchGotifyApplications(
   const res = await proxiedFetch(joinUrl(baseUrl, '/application'), {
     headers: { 'X-Gotify-Key': clientToken },
   })
-  if (!res.ok) {
-    throw new Error(`Gotify /application failed (${res.status})`)
-  }
+  if (!res.ok) await throwGotifyHttpError(res)
   const data = (await res.json()) as GotifyApplication[]
   return Array.isArray(data) ? data : []
 }
@@ -69,9 +90,7 @@ export async function fetchGotifyMessages(
     const res = await proxiedFetch(nextUrl, {
       headers: { 'X-Gotify-Key': clientToken },
     })
-    if (!res.ok) {
-      throw new Error(`Gotify /message failed (${res.status})`)
-    }
+    if (!res.ok) await throwGotifyHttpError(res)
     const data = (await res.json()) as PagedMessages
     const batch = data.messages ?? []
     all.push(...batch)
@@ -95,9 +114,7 @@ export async function deleteGotifyMessage(
       headers: { 'X-Gotify-Key': clientToken },
     },
   )
-  if (!res.ok && res.status !== 404) {
-    throw new Error(`Gotify delete failed (${res.status})`)
-  }
+  if (!res.ok && res.status !== 404) await throwGotifyHttpError(res)
 }
 
 /** Map Gotify message using the shared pipe: title=phone, message=body. */

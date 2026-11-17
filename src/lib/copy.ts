@@ -67,15 +67,37 @@ export const copy = {
   statusPolling: '轮询',
   statusError: '错误',
 
+  gotifySyncErrorTitle: 'Gotify 无法同步',
+  ntfySyncErrorTitle: 'ntfy 无法同步',
+  syncErrorOpenSettings: '去设置',
+
   demoBanner: '当前为演示数据',
 
   unknownPeer: '未知号码',
   yesterday: '昨天',
-  gotifySyncFailed: 'Gotify 同步失败',
-  ntfySyncFailed: 'ntfy 同步失败',
+  gotifySyncFailed: '同步失败，请稍后重试',
+  gotifyUnauthorized: '令牌无效或权限不足',
+  gotifyNotFound: '找不到接口，请检查服务器地址',
+  ntfySyncFailed: '同步失败，请稍后重试',
+  ntfyUnauthorized: '令牌无效或权限不足',
+  ntfyNotFound: '找不到主题或服务器，请检查配置',
   gotifyWsFallback:
     '实时连接不可用，已改为定时刷新。请检查 Gotify 的 AllowedWebSocketOrigins。',
 } as const
+
+/** Map upstream HTTP status to a short user-facing sync error. */
+export function syncHttpError(
+  service: 'gotify' | 'ntfy',
+  status: number,
+): string {
+  if (status === 401 || status === 403) {
+    return service === 'gotify' ? copy.gotifyUnauthorized : copy.ntfyUnauthorized
+  }
+  if (status === 404) {
+    return service === 'gotify' ? copy.gotifyNotFound : copy.ntfyNotFound
+  }
+  return service === 'gotify' ? copy.gotifySyncFailed : copy.ntfySyncFailed
+}
 
 export function deleteThreadsTitle(count: number): string {
   return `要删除${count}组对话吗？`

@@ -261,7 +261,11 @@ export function SettingsScreen({ open, onBack }: Props) {
                 </div>
               </div>
               {draftGotify.enabled ? (
-                <p className="settings-footer-hint pipe-status">
+                <p
+                  className={`settings-footer-hint pipe-status${
+                    status.gotify === 'error' ? ' is-error' : ''
+                  }`}
+                >
                   {copy.statusLabel}：{statusLabel(status.gotify)}
                   {status.gotifyError ? ` — ${status.gotifyError}` : ''}
                 </p>
@@ -370,7 +374,11 @@ export function SettingsScreen({ open, onBack }: Props) {
                 </div>
               </div>
               {NTFY_ENABLED && draftNtfy.enabled ? (
-                <p className="settings-footer-hint pipe-status">
+                <p
+                  className={`settings-footer-hint pipe-status${
+                    status.ntfy === 'error' ? ' is-error' : ''
+                  }`}
+                >
                   {copy.statusLabel}：{statusLabel(status.ntfy)}
                   {status.ntfyError ? ` — ${status.ntfyError}` : ''}
                 </p>
